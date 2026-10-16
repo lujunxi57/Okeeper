@@ -1,0 +1,8 @@
+[Unit]
+Description=Okeeper default lightweight daily trigger
+[Service]
+Type=oneshot
+EnvironmentFile=-%h/.config/okeeper/env
+ExecStart=@PYTHON@ @ROOT@/app/trigger.py daily
+TimeoutStartSec=300
+UMask=0077

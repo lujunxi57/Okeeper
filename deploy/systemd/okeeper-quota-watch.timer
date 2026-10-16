@@ -1,0 +1,10 @@
+[Unit]
+Description=Okeeper quota-watch check every minute
+[Timer]
+OnCalendar=*-*-* *:*:00 Asia/Taipei
+AccuracySec=1s
+RandomizedDelaySec=0
+Persistent=false
+Unit=okeeper-quota-watch.service
+[Install]
+WantedBy=timers.target

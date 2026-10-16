@@ -1,0 +1,9 @@
+[Unit]
+Description=Okeeper automatic account quota monitor
+[Service]
+Type=oneshot
+EnvironmentFile=-%h/.config/okeeper/env
+ExecStart=@PYTHON@ @ROOT@/app/quota_watch.py
+TimeoutStartSec=300
+KillMode=process
+UMask=0077

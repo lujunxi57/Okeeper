@@ -1,0 +1,15 @@
+[Unit]
+Description=Okeeper local Codex alarm console
+StartLimitIntervalSec=0
+[Service]
+Type=simple
+WorkingDirectory=@ROOT@
+Environment=OKEEPER_BIND=@BIND@
+Environment=OKEEPER_PORT=@PORT@
+EnvironmentFile=-%h/.config/okeeper/env
+ExecStart=@PYTHON@ @ROOT@/app/web_server.py
+Restart=always
+RestartSec=5
+UMask=0077
+[Install]
+WantedBy=default.target

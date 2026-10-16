@@ -1,0 +1,13 @@
+{
+  "name": "okeeper",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A local alarm clock for Codex sessions and account quotas",
+  "scripts": {
+    "test": "node tests/browser/quota-watch-ui-check.cjs && node tests/browser/custom-editor-check.cjs && node tests/browser/enter-dialog-check.cjs && node tests/browser/card-switch-check.cjs"
+  },
+  "devDependencies": {
+    "playwright-core": "1.60.0"
+  },
+  "engines": {"node": ">=20"}
+}

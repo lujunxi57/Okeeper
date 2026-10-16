@@ -1,0 +1,8 @@
+[Unit]
+Description=Okeeper account and selected-session dispatcher
+[Service]
+Type=oneshot
+EnvironmentFile=-%h/.config/okeeper/env
+ExecStart=@PYTHON@ @ROOT@/app/custom_dispatch.py
+TimeoutStartSec=30
+UMask=0077

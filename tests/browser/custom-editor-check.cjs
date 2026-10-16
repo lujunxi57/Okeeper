@@ -1,0 +1,41 @@
+const {chromium}=require('playwright-core');
+const assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path'),net=require('node:net');
+const {spawn}=require('node:child_process');
+const root=path.resolve(__dirname,'../..'),artifacts=path.join(root,'artifacts/browser');fs.mkdirSync(artifacts,{recursive:true});
+(async()=>{
+ const state=fs.mkdtempSync(path.join(os.tmpdir(),'rhythm-custom-editor-'));let server,browser;
+ try{
+  const port=await new Promise(resolve=>{const probe=net.createServer();probe.listen(0,'127.0.0.1',()=>{const p=probe.address().port;probe.close(()=>resolve(p));});});
+  server=spawn(process.env.OKEEPER_PYTHON||'python3',[path.join(root,'tests/browser/fixture_server.py')],{env:{...process.env,PYTHONUNBUFFERED:'1',OKEEPER_BIND:'127.0.0.1',OKEEPER_PORT:String(port),OKEEPER_STATE_DIR:state},stdio:['ignore','pipe','pipe']});
+  await new Promise((resolve,reject)=>{let text='';const timer=setTimeout(()=>reject(new Error('server timeout')),5000);server.stdout.on('data',chunk=>{text+=chunk;if(text.includes('Okeeper listening')){clearTimeout(timer);resolve();}});server.stderr.on('data',chunk=>{text+=chunk;});server.once('exit',code=>{clearTimeout(timer);reject(new Error(text+code));});});
+  browser=await chromium.launch({headless:true,executablePath:process.env.OKEEPER_BROWSER||'/usr/bin/google-chrome',args:['--no-sandbox','--no-proxy-server']});
+  const page=await browser.newPage({viewport:{width:1280,height:1000}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
+  const base=`http://127.0.0.1:${port}`;await page.goto(base,{waitUntil:'networkidle'});await page.waitForSelector('.alarm-card');
+  const original=page.locator('.alarm-card').first(),id=await original.getAttribute('data-id');
+  await original.locator('.edit-button').click();assert.ok(await page.getByRole('radio',{name:/默认触发/}).isChecked());assert.ok(await page.locator('#custom-delivery').isHidden());
+  await page.getByRole('radio',{name:/指定会话/}).check();await page.locator('#choose-thread').click();await page.waitForSelector('.session-option');
+  const response=await page.request.get(base+'/api/sessions'),sessions=(await response.json()).sessions;
+  assert.ok(sessions.length>=3);const target=sessions.find(s=>s.id==='00000000-0000-0000-0000-000000000001');assert.ok(target.selectable);
+  const managed=sessions.find(s=>!s.selectable&&s.reason.includes('自动触发'));assert.ok(managed);assert.ok(await page.locator(`.session-option[data-id="${managed.id}"]`).isDisabled());
+  await page.locator('#session-search').fill(target.id);const option=page.locator(`.session-option[data-id="${target.id}"]`);assert.equal(await option.locator('small').textContent(),`session id: ${target.id}`);await option.click();
+  assert.equal(await page.locator('#chosen-id').textContent(),`session id: ${target.id}`);
+  const prompt='这是一次无人看守的任务。\n请继续处理。';await page.locator('#alarm-prompt').fill(prompt);await page.keyboard.press('Enter');assert.equal(await page.locator('dialog#add-dialog[open]').count(),1);assert.equal(await page.locator('#alarm-prompt').inputValue(),prompt+'\n');
+  await page.keyboard.press('Control+Enter');await page.waitForFunction(()=>!document.querySelector('#add-dialog').open);
+  const view=async()=>await (await page.request.get(base+'/api/alarms')).json();let custom=(await view()).alarms.find(a=>a.id===id);assert.equal(custom.target_type,'thread');assert.equal(custom.prompt,prompt+'\n');assert.equal(custom.thread_id,target.id);
+  const request=async(method,url,data)=>page.request.fetch(base+url,{method,headers:{'Content-Type':'application/json','X-Rhythm-Request':'1'},data});
+  let result=await request('POST','/api/alarms',{time:'07:00'});assert.equal(result.status(),200);
+  const other=sessions.find(s=>s.selectable&&s.cwd!==target.cwd&&!s.archived);assert.ok(other);
+  result=await request('POST','/api/alarms',{time:'07:00',target_type:'thread',thread_id:other.id,prompt:'其他项目的定时任务'});assert.equal(result.status(),200);
+  result=await request('POST','/api/alarms',{time:'07:00',target_type:'thread',thread_id:other.id,prompt:'同一会话重复时间'});assert.equal(result.status(),409);
+  result=await request('POST','/api/alarms',{time:'08:00',target_type:'thread',thread_id:managed.id,prompt:'不能选择的临时会话'});assert.equal(result.status(),400);
+  result=await request('PATCH',`/api/alarms/${id}`,{model:'gpt-6-luna'});assert.equal(result.status(),400);
+  await page.reload({waitUntil:'networkidle'});const card=()=>page.locator(`[data-id="${id}"]`);await card().locator('.toggle').click();await page.waitForFunction(id=>document.querySelector(`[data-id="${id}"] .toggle`).getAttribute('aria-checked')==='false'&&!document.querySelector(`[data-id="${id}"] .toggle`).disabled,id);custom=(await view()).alarms.find(a=>a.id===id);assert.equal(custom.prompt,prompt+'\n');
+  await card().locator('.delete-button').click();await page.waitForFunction(id=>!document.querySelector(`[data-id="${id}"]`),id);await page.locator('#undo-button').click();await page.waitForFunction(()=>document.querySelectorAll('.alarm-card').length===5);custom=(await view()).alarms.find(a=>a.thread_id===target.id);assert.equal(custom.prompt,prompt+'\n');assert.equal(custom.enabled,false);
+  const restored=page.locator(`[data-id="${custom.id}"]`);await restored.locator('.edit-button').click();assert.ok(await page.getByRole('radio',{name:/指定会话/}).isChecked());assert.equal(await page.locator('#alarm-prompt').inputValue(),prompt+'\n');
+  await page.screenshot({path:path.join(artifacts,'custom-editor-desktop.png'),fullPage:true});
+  await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.locator('#choose-thread').click();await page.waitForSelector('.session-option');await page.screenshot({path:path.join(artifacts,'custom-sessions-mobile.png'),fullPage:true});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.locator('#close-threads').click();await page.screenshot({path:path.join(artifacts,'custom-editor-mobile.png'),fullPage:true});
+  assert.equal(await page.locator('select[name="model"],input[name="model"],select[name="effort"]').count(),0);assert.deepEqual(errors,[]);
+  const proof={at:new Date().toISOString(),isolated_state:true,server_sessions:sessions.length,all_project_selection:true,session_id_under_name:true,managed_session_blocked:true,multiline_exact:true,ctrl_enter_save:true,same_time_default_and_two_custom:true,duplicate_same_target_rejected:true,model_override_rejected:true,delete_undo_preserves_target_and_prompt:true,mobile_no_overflow:true,page_errors:errors};
+  fs.writeFileSync(path.join(artifacts,'custom-editor-result.json'),JSON.stringify(proof,null,2)+'\n');console.log(JSON.stringify(proof,null,2));
+ }finally{if(browser)await browser.close();if(server&&server.exitCode===null){server.kill();await new Promise(resolve=>server.once('exit',resolve));}fs.rmSync(state,{recursive:true,force:true});}
+})().catch(e=>{console.error(e);process.exitCode=1;});
