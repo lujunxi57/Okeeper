@@ -1048,6 +1048,16 @@ function openDialog(alarm = null, preset = {}) {
   $('#save-button').focus({ preventScroll: true });
 }
 
+$('#intro-copy')?.addEventListener('click', () => {
+  if (reducedMotion.matches || typeof Motion === 'undefined' || !Motion.animateMini) return;
+  document.querySelectorAll('.title-char').forEach((ch, idx) => {
+    setTimeout(() => {
+      Motion.animateMini(ch, { transform: ['translateY(0px) scale(1)', 'translateY(-7px) scale(1.12)', 'translateY(0px) scale(1)'] }, { duration: .42 });
+    }, idx * 55);
+  });
+  const emp = $('.slogan-emphasis');
+  if (emp) Motion.animateMini(emp, { transform: ['scale(1)', 'scale(1.06)', 'scale(1)'] }, { duration: .45 });
+});
 $('#add-button').addEventListener('click', () => {
   const defaultAccount = quotaView?.accounts?.find(a => a.current)?.id || quotaView?.accounts?.[0]?.id || '';
   openDialog(null, { target_type: 'default', account_id: defaultAccount });

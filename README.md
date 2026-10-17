@@ -2,9 +2,9 @@
   <img src="web/icon.png" width="76" height="76" alt="Okeeper Icon">
 </p>
 
-# Okeeper
+# Okeeper · 赛博早八
 
-**多账号额度窗口接力与 Codex 会话无人值守准时投递控制台。**
+> **Codex，你这个年纪怎么睡得着的？**
 
 Okeeper 是运行在常开 Linux 服务器上的本机调度与额度管理控制台：按账号独立编排触发队列、实时监测多账号额度并自动切号，同时支持向指定 Codex 会话定时投递自定义提示词。
 
