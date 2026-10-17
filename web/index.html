@@ -6,12 +6,12 @@
   <meta name="theme-color" content="#f5f5ef">
   <meta name="description" content="赛博早八 —— Codex，你这个年纪怎么睡得着的？">
   <title>Okeeper · 赛博早八</title>
-  <link rel="icon" type="image/png" href="/icon.png?v=20261017-okeeper-12">
-  <link rel="apple-touch-icon" href="/icon.png?v=20261017-okeeper-12">
+  <link rel="icon" type="image/png" href="/icon.png?v=20261017-okeeper-13">
+  <link rel="apple-touch-icon" href="/icon.png?v=20261017-okeeper-13">
   <link rel="stylesheet" href="/vendor/daisyui-5.7.50.css">
-  <link rel="stylesheet" href="/style.css?v=20261017-okeeper-12">
+  <link rel="stylesheet" href="/style.css?v=20261017-okeeper-13">
   <script src="/vendor/motion-14.2.0.js" defer></script>
-  <script src="/app.js?v=20261017-okeeper-12" defer></script>
+  <script src="/app.js?v=20261017-okeeper-13" defer></script>
 </head>
 <body>
   <div class="shell">
@@ -144,6 +144,103 @@
   <dialog id="thread-dialog" aria-labelledby="thread-dialog-title"><div class="thread-dialog-head"><div><h2 id="thread-dialog-title">选择会话</h2><p>当前服务器</p></div><button id="close-threads" type="button" class="icon-button" aria-label="关闭会话列表"><svg viewBox="0 0 20 20"><path d="m5 5 10 10M15 5 5 15"/></svg></button></div><label class="session-search"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.3"/><path d="m12.5 12.5 4 4"/></svg><input id="session-search" type="search" autocomplete="off" placeholder="搜索名称或 session ID" aria-label="搜索会话"></label><div id="session-list" class="session-list" aria-live="polite"></div><button id="refresh-sessions" type="button" class="text-button">刷新列表</button></dialog>
   <dialog id="control-dialog" aria-labelledby="control-title"><div class="control-dialog-head"><h2 id="control-title">切换账号并重启</h2><button id="close-control" type="button" class="icon-button" aria-label="关闭账号操作"><svg viewBox="0 0 20 20"><path d="m5 5 10 10M15 5 5 15"/></svg></button></div><p id="control-target" class="control-target"></p><p class="control-warning">重启会中断主后台正在执行的任务。请先结束任务，并断开 Codex 的 SSH 连接；完成后重新连接。</p><p id="control-active" class="control-active"></p><p id="control-error" class="form-error" role="alert"></p><div class="dialog-actions"><button id="cancel-control" type="button" class="cancel-button">取消</button><button id="confirm-control" type="button" class="save-button">确认切换并重启</button></div></dialog>
   <div id="toast" class="toast" role="status" hidden><span id="toast-text"></span><button id="undo-button" type="button" hidden>撤销</button></div>
+  <aside id="cyber-mascot" class="cyber-mascot" aria-label="赛博早八守夜吉祥物">
+    <button id="mascot-minimize" class="mascot-minimize" type="button" aria-label="收起或展开小人偶" title="收起/展开">−</button>
+    <div id="mascot-bubble" class="mascot-bubble" role="status">呜呜…主人睡得好香，我还要盯表发 ok…</div>
+    <div id="mascot-stage" class="mascot-stage" title="戳一戳守夜的 Codex">
+      <svg class="mascot-svg" viewBox="0 0 180 138" aria-hidden="true">
+        <!-- Floating Zzz from sleeping human -->
+        <g class="zzz-group">
+          <text x="34" y="58" class="zzz z1">z</text>
+          <text x="22" y="42" class="zzz z2">Z</text>
+          <text x="12" y="24" class="zzz z3">Z</text>
+        </g>
+        <!-- Sweat / Tear drops when poked -->
+        <g class="codex-sweat">
+          <path d="M150 22 C152 27 147 30 148 25 Z" fill="#7fc8f8"/>
+          <path d="M158 30 C160 35 155 38 156 33 Z" fill="#7fc8f8"/>
+        </g>
+        <!-- Pitiful Cute Codex peeking & clinging behind the bed -->
+        <g class="codex-char">
+          <!-- Antenna -->
+          <g class="codex-antenna">
+            <path d="M122 36 Q126 22 134 20" fill="none" stroke="#3c6b4b" stroke-width="3" stroke-linecap="round"/>
+            <circle cx="135" cy="19" r="4.5" fill="#9be580" stroke="#2d5642" stroke-width="1.8" class="antenna-bulb"/>
+          </g>
+          <!-- Cute Ears / Side Bolts -->
+          <rect x="86" y="54" width="7" height="13" rx="3.5" fill="#588564" stroke="#284c37" stroke-width="2"/>
+          <rect x="151" y="54" width="7" height="13" rx="3.5" fill="#588564" stroke="#284c37" stroke-width="2"/>
+          <!-- Codex Head/Body -->
+          <rect x="91" y="35" width="62" height="54" rx="22" fill="#e7f2df" stroke="#284c37" stroke-width="2.6"/>
+          <!-- Screen Face -->
+          <rect x="98" y="43" width="48" height="36" rx="14" fill="#1e3828" stroke="#375f45" stroke-width="1.5"/>
+          <!-- Dark Eye Bags (Cyber Exhaustion) -->
+          <path d="M105 64 Q111 67 117 64" fill="none" stroke="#4f6d5a" stroke-width="1.8" stroke-linecap="round"/>
+          <path d="M127 64 Q133 67 139 64" fill="none" stroke="#4f6d5a" stroke-width="1.8" stroke-linecap="round"/>
+          <!-- Big Pitiful Watery Puppy Eyes -->
+          <g class="codex-eyes">
+            <circle cx="111" cy="56" r="5.6" fill="#b8f29c"/>
+            <circle cx="109.5" cy="54.2" r="2.2" fill="#ffffff"/>
+            <circle cx="113" cy="57.8" r="1.1" fill="#ffffff"/>
+            <circle cx="133" cy="56" r="5.6" fill="#b8f29c"/>
+            <circle cx="131.5" cy="54.2" r="2.2" fill="#ffffff"/>
+            <circle cx="135" cy="57.8" r="1.1" fill="#ffffff"/>
+          </g>
+          <!-- Pitiful Droopy Eyebrows (八字委屈眉) -->
+          <path d="M104 49 L115 46.5" fill="none" stroke="#b8f29c" stroke-width="2.2" stroke-linecap="round" class="codex-brow-l"/>
+          <path d="M140 49 L129 46.5" fill="none" stroke="#b8f29c" stroke-width="2.2" stroke-linecap="round" class="codex-brow-r"/>
+          <!-- Teardrops welling at eye corners -->
+          <path d="M104 59 C101 64 106 67 106 61 Z" fill="#7ad0f5" class="codex-tear tear-l"/>
+          <path d="M140 59 C143 64 138 67 138 61 Z" fill="#7ad0f5" class="codex-tear tear-r"/>
+          <!-- Tiny Trembling Wobbly Mouth (委屈波浪嘴) -->
+          <path d="M117 69 Q122 65.5 127 69" fill="none" stroke="#b8f29c" stroke-width="2.2" stroke-linecap="round" class="codex-mouth"/>
+          <!-- Rosy Cheeks -->
+          <ellipse cx="103" cy="61" rx="3.2" ry="1.8" fill="#f29b9b" opacity="0.55"/>
+          <ellipse cx="141" cy="61" rx="3.2" ry="1.8" fill="#f29b9b" opacity="0.55"/>
+        </g>
+
+        <!-- Bed & Sleeping Human in Foreground -->
+        <g class="bed-group">
+          <!-- Soft Pillow -->
+          <rect x="12" y="82" width="54" height="26" rx="11" fill="#ffffff" stroke="#536b58" stroke-width="2.2"/>
+          <!-- Sleeping Human Head -->
+          <g class="human-head">
+            <!-- Nightcap (睡帽) -->
+            <path d="M22 76 Q32 58 54 66 Q44 74 42 82 Z" fill="#6d9460" stroke="#2d4d36" stroke-width="2.2" stroke-linejoin="round"/>
+            <circle cx="56" cy="66" r="4.5" fill="#f7f9f2" stroke="#2d4d36" stroke-width="2"/>
+            <!-- Head -->
+            <circle cx="38" cy="86" r="15.5" fill="#fde6d2" stroke="#2d4d36" stroke-width="2.3"/>
+            <!-- Hair -->
+            <path d="M24 81 Q32 72 48 77 Q41 71 29 73 Z" fill="#2c3530"/>
+            <!-- Peaceful Closed Eye -->
+            <path d="M36 86 Q41 90 45 86" fill="none" stroke="#2d4d36" stroke-width="2.2" stroke-linecap="round"/>
+            <!-- Happy Sleeping Smile -->
+            <path d="M40 93 Q43 95.5 46 93" fill="none" stroke="#2d4d36" stroke-width="1.8" stroke-linecap="round"/>
+            <!-- Expanding/Shrinking Snot Bubble (呼呼大睡鼻涕泡) -->
+            <circle cx="52" cy="89" r="6.5" fill="#d8f1ff" fill-opacity="0.78" stroke="#6aa9c9" stroke-width="1.6" class="snot-bubble"/>
+            <circle cx="50" cy="87" r="1.8" fill="#ffffff" class="snot-bubble"/>
+          </g>
+          <!-- Breathing Quilt / Blanket (盖着的被子) -->
+          <g class="quilt-group">
+            <path d="M8 104 Q48 86 92 102 L96 124 L8 124 Z" fill="#4f7856" stroke="#284c37" stroke-width="2.4" stroke-linejoin="round"/>
+            <path d="M26 102 Q48 95 72 103" fill="none" stroke="#78a17d" stroke-width="2" stroke-linecap="round"/>
+          </g>
+          <!-- Mattress / Sill Base -->
+          <rect x="6" y="116" width="166" height="14" rx="7" fill="#dce5d3" stroke="#284c37" stroke-width="2.4"/>
+        </g>
+
+        <!-- Codex's Little Paws Clinging Over the Bed Sill (扒着床沿的小手) -->
+        <g class="codex-paws">
+          <ellipse cx="104" cy="115" rx="8.5" ry="6" fill="#98c48c" stroke="#284c37" stroke-width="2.3" class="paw-l"/>
+          <line x1="101" y1="112" x2="101" y2="117" stroke="#284c37" stroke-width="1.6" stroke-linecap="round"/>
+          <line x1="106" y1="112" x2="106" y2="117" stroke="#284c37" stroke-width="1.6" stroke-linecap="round"/>
+          <ellipse cx="142" cy="115" rx="8.5" ry="6" fill="#98c48c" stroke="#284c37" stroke-width="2.3" class="paw-r"/>
+          <line x1="139" y1="112" x2="139" y2="117" stroke="#284c37" stroke-width="1.6" stroke-linecap="round"/>
+          <line x1="144" y1="112" x2="144" y2="117" stroke="#284c37" stroke-width="1.6" stroke-linecap="round"/>
+        </g>
+      </svg>
+    </div>
+  </aside>
   <template id="alarm-template">
     <article class="alarm-card card card-border">
       <div class="card-top">

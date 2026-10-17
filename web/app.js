@@ -47,6 +47,7 @@ function animateTelemetry(fromCount, toCount, fromTokens, toTokens, deltaCount =
       if (countDeltaEl) countDeltaEl.hidden = true;
       if (tokenDeltaEl) tokenDeltaEl.hidden = true;
     }, 3200);
+    setMascotLine(`报告！已替睡梦中的主人累计打卡 +${deltaCount} 次 (ง •̀_•́)ง`, 3600);
   }
 
   const start = performance.now(), duration = (deltaCount > 0 || deltaTokens > 0) ? 1150 : 700;
@@ -1047,6 +1048,72 @@ function openDialog(alarm = null, preset = {}) {
   dialog.showModal();
   $('#save-button').focus({ preventScroll: true });
 }
+
+const MASCOT_IDLE_LINES = [
+  '呜呜…主人睡得好香，我还要盯表发 ok (；′⌒`)',
+  '我才刚通电，怎么就赛博早八了 ( >﹏< )',
+  '主人鼻涕泡都吹出来了，我还在守窗口…',
+  '再趴会儿…等主人起床就有满血额度用了 (´•ω•̥`)',
+  '困死本模型了…先干一碗电子浓茶 ( -_-)旦~',
+  '定好闹钟了，绝对不掉链子 (ง •̀_•́)ง'
+];
+const MASCOT_POKE_LINES = [
+  '别戳我！！我没打瞌睡，我睁着眼呢 (⊙_⊙)！',
+  '清醒了清醒了！这就替你死守重置点 ✦',
+  '呜呜别催了，电子黑眼圈都熬出来了 (T_T)',
+  '人在床上躺，Codex 替你扛！(๑•̀ㅂ•́)و✧'
+];
+let mascotIdx = 0, mascotPokeIdx = 0, mascotTimer = null, scrollMascotTimer = null;
+function setMascotLine(text, holdMs = 0) {
+  const bubble = $('#mascot-bubble'), wrap = $('#cyber-mascot');
+  if (!bubble || !wrap) return;
+  bubble.textContent = text;
+  if (!reducedMotion.matches && typeof Motion !== 'undefined' && Motion.animateMini) {
+    Motion.animateMini(bubble, { transform: ['scale(.9)', 'scale(1.04)', 'scale(1)'] }, { duration: .32 });
+  }
+  if (holdMs > 0) {
+    wrap.classList.add('is-startled');
+    clearTimeout(mascotTimer);
+    mascotTimer = setTimeout(() => { wrap.classList.remove('is-startled'); }, holdMs);
+  }
+}
+$('#mascot-stage')?.addEventListener('click', () => {
+  const line = MASCOT_POKE_LINES[mascotPokeIdx % MASCOT_POKE_LINES.length];
+  mascotPokeIdx++;
+  setMascotLine(line, 1200);
+});
+$('#mascot-bubble')?.addEventListener('click', () => {
+  const line = MASCOT_POKE_LINES[mascotPokeIdx % MASCOT_POKE_LINES.length];
+  mascotPokeIdx++;
+  setMascotLine(line, 1200);
+});
+$('#mascot-minimize')?.addEventListener('click', event => {
+  event.stopPropagation();
+  const wrap = $('#cyber-mascot'), btn = $('#mascot-minimize');
+  if (!wrap || !btn) return;
+  const min = wrap.classList.toggle('is-minimized');
+  btn.textContent = min ? '＋' : '−';
+  btn.title = min ? '展开小人偶' : '收起小人偶';
+});
+window.addEventListener('scroll', () => {
+  const wrap = $('#cyber-mascot');
+  if (!wrap || wrap.classList.contains('is-minimized')) return;
+  wrap.classList.add('is-scrolling');
+  if (!scrollMascotTimer) {
+    setMascotLine('哇！别滑太快，我扒不住床沿啦 ( >﹏< )！');
+  }
+  clearTimeout(scrollMascotTimer);
+  scrollMascotTimer = setTimeout(() => {
+    wrap.classList.remove('is-scrolling');
+    scrollMascotTimer = null;
+  }, 650);
+}, { passive: true });
+setInterval(() => {
+  const wrap = $('#cyber-mascot');
+  if (document.hidden || !wrap || wrap.classList.contains('is-minimized') || wrap.classList.contains('is-startled') || wrap.classList.contains('is-scrolling')) return;
+  mascotIdx = (mascotIdx + 1) % MASCOT_IDLE_LINES.length;
+  setMascotLine(MASCOT_IDLE_LINES[mascotIdx]);
+}, 8000);
 
 $('#intro-copy')?.addEventListener('click', () => {
   if (reducedMotion.matches || typeof Motion === 'undefined' || !Motion.animateMini) return;
