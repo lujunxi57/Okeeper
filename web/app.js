@@ -1089,11 +1089,23 @@ $('#mascot-bubble')?.addEventListener('click', () => {
 });
 $('#mascot-minimize')?.addEventListener('click', event => {
   event.stopPropagation();
-  const wrap = $('#cyber-mascot'), btn = $('#mascot-minimize');
-  if (!wrap || !btn) return;
-  const min = wrap.classList.toggle('is-minimized');
-  btn.textContent = min ? '＋' : '−';
-  btn.title = min ? '展开小人偶' : '收起小人偶';
+  const wrap = $('#cyber-mascot'), orb = $('#mascot-orb');
+  if (!wrap || !orb) return;
+  wrap.classList.add('is-minimized');
+  orb.hidden = false;
+  if (!reducedMotion.matches && typeof Motion !== 'undefined' && Motion.animateMini) {
+    Motion.animateMini(orb, { transform: ['scale(.5)', 'scale(1.08)', 'scale(1)'] }, { duration: .35 });
+  }
+});
+$('#mascot-orb')?.addEventListener('click', event => {
+  event.stopPropagation();
+  const wrap = $('#cyber-mascot'), orb = $('#mascot-orb'), exp = wrap?.querySelector('.mascot-expanded');
+  if (!wrap || !orb) return;
+  orb.hidden = true;
+  wrap.classList.remove('is-minimized');
+  if (exp && !reducedMotion.matches && typeof Motion !== 'undefined' && Motion.animateMini) {
+    Motion.animateMini(exp, { transform: ['scale(.7) translateY(16px)', 'scale(1) translateY(0px)'] }, { type: Motion.spring, duration: .45, bounce: .22 });
+  }
 });
 window.addEventListener('scroll', () => {
   const wrap = $('#cyber-mascot');
