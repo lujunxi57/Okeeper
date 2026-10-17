@@ -17,6 +17,10 @@ sessions=[{'id':'00000000-0000-0000-0000-000000000001','name':'Example project a
 web.account_catalog=lambda:accounts
 web.find_account=lambda id:next(({'id':a['id'],'label':a['name']} for a in accounts if a['id']==id),None)
 web.list_sessions=lambda _:sessions
+web.list_models=lambda **kwargs:[
+    {'id':'gpt-6.1-sol','name':'GPT-6.1-Sol','default_effort':'high','efforts':['low','medium','high','xhigh','max','ultra']},
+    {'id':'gpt-6-luna','name':'GPT-6-Luna','default_effort':'medium','efforts':['low','medium','high','xhigh','max']},
+]
 def validate(_,id):
     session=next((s for s in sessions if s['id']==id),None)
     if not session or not session['selectable']:raise ValueError('不能选择自动触发会话')

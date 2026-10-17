@@ -40,7 +40,7 @@ def begin(state,slot):
 
 
 def update(state,slot,status,**fields):
-    allowed={'route','thread_id','turn_id','started_at','completed_at','error'}
+    allowed={'route','thread_id','turn_id','started_at','completed_at','error','tokens'}
     if set(fields)-allowed:raise ValueError('unknown execution fields')
     with database(state) as db:
         db.execute('UPDATE account_runs SET '+','.join(['status=?','at=?']+[f'{k}=?' for k in fields])+' WHERE slot=?',

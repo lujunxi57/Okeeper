@@ -7,8 +7,8 @@ import os
 import re
 import sqlite3
 from urllib.parse import urlsplit
-from schedule_store import create_alarm, delete_alarm, snapshot, update_alarm, connect, database, delivery_fields, account_fields, ALARM_FIELDS, advance_alarm
-from session_catalog import list_sessions, validate_target
+from schedule_store import create_alarm, delete_alarm, snapshot, update_alarm, connect, database, delivery_fields, account_fields, custom_model_fields, ALARM_FIELDS, advance_alarm
+from session_catalog import list_sessions, list_models, validate_target
 from account_quota import cache as quota_cache
 from account_rpc import account_catalog,find_account
 import account_control
@@ -52,6 +52,10 @@ class Handler(BaseHTTPRequestHandler):
             try:self.reply(200,{'sessions':list_sessions(STATE)})
             except Exception:self.reply(503,{'error':'暂时无法读取服务器会话，请稍后重试'})
             return
+        if path == '/api/models':
+            try:self.reply(200,{'models':list_models(refresh=urlsplit(self.path).query=='refresh=1')})
+            except Exception:self.reply(503,{'error':'暂时无法读取可用模型列表'})
+            return
         if path == '/api/alarms':
             try:
                 self.reply(200, snapshot(STATE))
@@ -59,6 +63,7 @@ class Handler(BaseHTTPRequestHandler):
                 self.reply(503, {'error': '暂时无法读取时间设置，请稍后重试'})
             return
         assets = {'/': ('index.html', 'text/html; charset=utf-8'),
+                  '/icon.png': ('icon.png', 'image/png'),
                   '/vendor/daisyui-5.7.50.css': ('vendor/daisyui-5.7.50.css', 'text/css; charset=utf-8'),
                   '/vendor/motion-14.2.0.js': ('vendor/motion-14.2.0.js', 'text/javascript; charset=utf-8'),
                   '/style.css': ('style.css', 'text/css; charset=utf-8'),
@@ -108,6 +113,14 @@ class Handler(BaseHTTPRequestHandler):
                         old=dict(row)
                 target,thread,_,_=delivery_fields(payload,old)
                 account,_=account_fields(payload,old)
+                c_model,c_effort=custom_model_fields(payload,old)
+                if c_model and (self.command=='POST' or set(payload)&{'custom_model','custom_effort','target_type'}):
+                    try:models=list_models()
+                    except Exception as error:raise ValueError('暂时无法核验模型列表，请稍后重试') from error
+                    matched_model=next((m for m in models if m['id']==c_model),None)
+                    if not matched_model:raise ValueError('所选模型当前不可用，请重新选择')
+                    if c_effort and c_effort not in matched_model.get('efforts',[]):
+                        raise ValueError('所选模型不支持该思考强度档位')
                 if account and (self.command=='POST' or set(payload)&{'account_id','target_type'}):
                     record=find_account(account)
                     if not record:raise ValueError('此账号已不存在，请重新选择')

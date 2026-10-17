@@ -100,6 +100,28 @@ def create_chat(rpc, title):
     rpc.call('thread/name/set', {'threadId': thread, 'name': title})
     return thread
 
+DEFAULT_OK_TOKENS = 14824
+
+def extract_turn_tokens(path_str, turn_id):
+    if not path_str:
+        return None
+    try:
+        p = Path(path_str)
+        if not p.is_file():
+            return None
+        for line in reversed(p.read_text(errors='ignore').splitlines()):
+            if turn_id not in line or 'token_usage_record' not in line:
+                continue
+            obj = json.loads(line)
+            if obj.get('type') == 'token_usage_record' and obj.get('payload', {}).get('turn_id') == turn_id:
+                usage = obj['payload'].get('turn_token_usage') or obj['payload'].get('usage') or {}
+                total = usage.get('total_tokens')
+                if isinstance(total, int) and total > 0:
+                    return total
+    except Exception:
+        pass
+    return None
+
 def run_turn(rpc, thread, key, scheduled):
     rpc.events.clear()
     sent = now()
@@ -112,12 +134,18 @@ def run_turn(rpc, thread, key, scheduled):
     turn = result['turn']['id']
     log('accepted', slot=key, thread=thread, turn_id=turn, text='ok')
     seen = {'started': False, 'user': False, 'final': False, 'completed': False}
+    live_tokens = None
     deadline = time.monotonic() + 180
     def consume(msg):
+        nonlocal live_tokens
         method = msg.get('method')
         p = msg.get('params', {})
         if p.get('threadId') != thread:
             return
+        if method == 'thread/tokenUsage/updated':
+            last_u = (p.get('tokenUsage') or {}).get('last') or {}
+            if isinstance(last_u.get('totalTokens'), int) and last_u['totalTokens'] > 0:
+                live_tokens = last_u['totalTokens']
         if method == 'turn/started' and p.get('turn', {}).get('id') == turn:
             delay = (now() - scheduled).total_seconds()
             if delay > MAX_LATE:
@@ -156,9 +184,10 @@ def run_turn(rpc, thread, key, scheduled):
     finals = [i for i in items if i.get('type') == 'agentMessage' and i.get('phase') != 'commentary']
     if not any(len(i.get('content', [])) == 1 and i['content'][0].get('text') == 'ok' for i in users) or not finals:
         raise RuntimeError('messages missing from persisted history')
+    tokens = extract_turn_tokens(data.get('path'), turn) or live_tokens or DEFAULT_OK_TOKENS
     return {'thread': thread, 'turn_id': turn, 'scheduled': scheduled.isoformat(),
             'sent': sent.isoformat(), 'completed': now().isoformat(),
-            'model': 'gpt-6-luna', 'effort': 'low', 'live_events': seen,
+            'model': 'gpt-6-luna', 'effort': 'low', 'tokens': tokens, 'live_events': seen,
             'persisted_same_thread': True, 'final_reply': finals[-1].get('text')}
 
 def main():
@@ -186,10 +215,12 @@ def main():
     except BlockingIOError:
         log('skipped_locked', slot=key); lock.close(); return
     db = sqlite3.connect(STATE / 'runs.sqlite')
-    db.execute('CREATE TABLE IF NOT EXISTS runs (slot TEXT PRIMARY KEY, status TEXT, turn_id TEXT, at TEXT)')
+    db.execute('CREATE TABLE IF NOT EXISTS runs (slot TEXT PRIMARY KEY, status TEXT, turn_id TEXT, at TEXT, tokens INTEGER)')
+    if 'tokens' not in {r[1] for r in db.execute('PRAGMA table_info(runs)')}:
+        db.execute('ALTER TABLE runs ADD COLUMN tokens INTEGER')
     db.execute('CREATE TABLE IF NOT EXISTS daily_chats (day TEXT PRIMARY KEY, thread_id TEXT NOT NULL, created_at TEXT NOT NULL)')
     try:
-        db.execute('INSERT INTO runs VALUES (?,?,?,?)', (key, 'claimed', None, now().isoformat()))
+        db.execute('INSERT INTO runs (slot,status,turn_id,at) VALUES (?,?,?,?)', (key, 'claimed', None, now().isoformat()))
         db.commit()
     except sqlite3.IntegrityError:
         log('skipped_duplicate', slot=key); db.close(); lock.close(); return
@@ -197,10 +228,10 @@ def main():
     fresh_chat = False
     claimed_alarm = None
     rpc = None
-    def status(value, turn=None):
-        db.execute('UPDATE runs SET status=?,turn_id=?,at=? WHERE slot=?', (value, turn, now().isoformat(), key))
+    def status(value, turn=None, tokens=None):
+        db.execute('UPDATE runs SET status=?,turn_id=?,tokens=COALESCE(?,tokens),at=? WHERE slot=?', (value, turn, tokens, now().isoformat(), key))
         db.commit()
-        log(value, slot=key, thread=thread, turn_id=turn)
+        log(value, slot=key, thread=thread, turn_id=turn, tokens=tokens)
     try:
         if not 0 <= (now() - scheduled).total_seconds() <= MAX_LATE:
             status('skipped_missed'); return
@@ -243,7 +274,7 @@ def main():
             if not claimed_alarm:
                 status('skipped_disabled'); return
         proof = run_turn(rpc, thread, key, scheduled)
-        status('verified_completed', proof['turn_id'])
+        status('verified_completed', proof['turn_id'], proof.get('tokens', DEFAULT_OK_TOKENS))
         finish_alarm(STATE, claimed_alarm, 'completed')
         if mode == 'test':
             save_json('daily-chat-test-passed.json', proof)

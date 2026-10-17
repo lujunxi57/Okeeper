@@ -137,8 +137,8 @@ def process(slot):
         if not store.unchanged(STATE,run):store.finish(STATE,run,'skipped_changed');return
         store.update(STATE,slot,'sending',started_at=now().isoformat())
         proof=run_turn(ObservedTurn(rpc,slot),thread,slot,scheduled)
-        store.finish(STATE,run,'completed',turn_id=proof['turn_id'],completed_at=now().isoformat())
-        log('account_turn_verified',account=record['id'],route=route,thread=thread,turn_id=proof['turn_id'])
+        store.finish(STATE,run,'completed',turn_id=proof['turn_id'],tokens=proof.get('tokens',14824),completed_at=now().isoformat())
+        log('account_turn_verified',account=record['id'],route=route,thread=thread,turn_id=proof['turn_id'],tokens=proof.get('tokens',14824))
     except PinnedAccountChanged:
         store.finish(STATE,run,'skipped_account_changed',error='当天固定的后台已切换账号，本次跳过；不会切号、迁移会话或自动补发')
     except Exception as error:

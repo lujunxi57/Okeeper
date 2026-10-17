@@ -28,7 +28,8 @@ def connect(state):
                  'target_type': "TEXT NOT NULL DEFAULT 'default' CHECK(target_type IN ('default','thread'))",
                  'thread_id': "TEXT NOT NULL DEFAULT ''", 'thread_name': "TEXT NOT NULL DEFAULT ''",
                  'prompt': "TEXT NOT NULL DEFAULT ''", 'account_id': "TEXT NOT NULL DEFAULT ''",
-                 'account_name': "TEXT NOT NULL DEFAULT ''"}
+                 'account_name': "TEXT NOT NULL DEFAULT ''",
+                 'custom_model': "TEXT NOT NULL DEFAULT ''", 'custom_effort': "TEXT NOT NULL DEFAULT ''"}
     for column, definition in additions.items():
         if column not in columns:
             db.execute(f'ALTER TABLE alarms ADD COLUMN {column} {definition}')
@@ -43,12 +44,16 @@ def connect(state):
                 target_type TEXT NOT NULL DEFAULT 'default' CHECK(target_type IN ('default','thread')),
                 thread_id TEXT NOT NULL DEFAULT '',thread_name TEXT NOT NULL DEFAULT '',prompt TEXT NOT NULL DEFAULT '',
                 account_id TEXT NOT NULL DEFAULT '',account_name TEXT NOT NULL DEFAULT '',
+                custom_model TEXT NOT NULL DEFAULT '',custom_effort TEXT NOT NULL DEFAULT '',
                 UNIQUE(time,target_type,thread_id,account_id))''')
-            fields='id,time,enabled,created_at,mode,run_at,consumed_at,last_status,revision,target_type,thread_id,thread_name,prompt,account_id,account_name'
+            fields='id,time,enabled,created_at,mode,run_at,consumed_at,last_status,revision,target_type,thread_id,thread_name,prompt,account_id,account_name,custom_model,custom_effort'
             db.execute(f'INSERT INTO alarms_upgrade ({fields}) SELECT {fields} FROM alarms')
             db.execute('DROP TABLE alarms')
             db.execute('ALTER TABLE alarms_upgrade RENAME TO alarms')
             break
+    db.execute('CREATE TABLE IF NOT EXISTS runs (slot TEXT PRIMARY KEY, status TEXT, turn_id TEXT, at TEXT, tokens INTEGER)')
+    if 'tokens' not in {r['name'] for r in db.execute('PRAGMA table_info(runs)')}:
+        db.execute('ALTER TABLE runs ADD COLUMN tokens INTEGER')
     db.execute('''CREATE TABLE IF NOT EXISTS custom_runs (
         slot TEXT PRIMARY KEY, alarm_id TEXT NOT NULL, revision INTEGER NOT NULL, thread_id TEXT NOT NULL,
         scheduled TEXT NOT NULL,prompt TEXT NOT NULL,status TEXT NOT NULL,at TEXT NOT NULL,
@@ -57,7 +62,9 @@ def connect(state):
     db.execute('''CREATE TABLE IF NOT EXISTS account_runs (
         slot TEXT PRIMARY KEY, alarm_id TEXT NOT NULL, revision INTEGER NOT NULL, account_id TEXT NOT NULL,
         account_name TEXT NOT NULL,scheduled TEXT NOT NULL,status TEXT NOT NULL,at TEXT NOT NULL,
-        route TEXT,thread_id TEXT,turn_id TEXT,started_at TEXT,completed_at TEXT,error TEXT)''')
+        route TEXT,thread_id TEXT,turn_id TEXT,started_at TEXT,completed_at TEXT,error TEXT,tokens INTEGER)''')
+    if 'tokens' not in {r['name'] for r in db.execute('PRAGMA table_info(account_runs)')}:
+        db.execute('ALTER TABLE account_runs ADD COLUMN tokens INTEGER')
     db.execute('CREATE INDEX IF NOT EXISTS account_runs_alarm ON account_runs(alarm_id,scheduled DESC)')
     db.execute('''CREATE TABLE IF NOT EXISTS account_daily_chats (
         account_id TEXT NOT NULL,day TEXT NOT NULL,route TEXT NOT NULL,thread_id TEXT NOT NULL,
@@ -133,7 +140,27 @@ def delivery_fields(payload, old=None, thread_name=None):
     name = thread_name if thread_name is not None else old.get('thread_name','') if thread==old.get('thread_id') else ''
     return target, thread, str(name)[:512], prompt
 
-ALARM_FIELDS={'time','enabled','mode','target_type','thread_id','prompt','account_id'}
+ALARM_FIELDS={'time','enabled','mode','target_type','thread_id','prompt','account_id','custom_model','custom_effort'}
+
+def custom_model_fields(payload, old=None):
+    old = old or {}
+    target = payload.get('target_type', old.get('target_type', 'default'))
+    if target == 'default':
+        if payload.get('custom_model') or payload.get('custom_effort'):
+            raise ValueError('默认触发固定模型，不能自定义模型或思考强度')
+        return '', ''
+    model = payload.get('custom_model', old.get('custom_model', ''))
+    effort = payload.get('custom_effort', old.get('custom_effort', ''))
+    if not isinstance(model, str) or not isinstance(effort, str):
+        raise ValueError('模型或思考强度格式无效')
+    model, effort = model.strip(), effort.strip()
+    if not model:
+        return '', ''
+    if re.fullmatch(r'[a-zA-Z0-9._-]{1,64}', model) is None:
+        raise ValueError('请选择有效的模型')
+    if effort and re.fullmatch(r'[a-zA-Z0-9_-]{1,32}', effort) is None:
+        raise ValueError('请选择有效的思考强度')
+    return model, effort
 
 def account_fields(payload,old=None,account_name=None):
     old=old or {};target=payload.get('target_type',old.get('target_type','default'))
@@ -160,13 +187,14 @@ def create_alarm(state, payload, *, thread_name=None, account_name=None):
     enabled = payload.get('enabled', True)
     target, thread, name, prompt = delivery_fields(payload,thread_name=thread_name)
     account,email = account_fields(payload,account_name=account_name)
+    c_model, c_effort = custom_model_fields(payload)
     if type(enabled) is not bool:
         raise ValueError('启停状态无效')
     with database(state) as db:
         alarm_id = str(uuid.uuid4())
         avoid_ambiguous_default(db,time,target,account)
-        db.execute('INSERT INTO alarms (id,time,enabled,created_at,mode,run_at,target_type,thread_id,thread_name,prompt,account_id,account_name) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
-                   (alarm_id, time, int(enabled), now().isoformat(), mode, next_occurrence(time) if mode == 'once' else None,target,thread,name,prompt,account,email))
+        db.execute('INSERT INTO alarms (id,time,enabled,created_at,mode,run_at,target_type,thread_id,thread_name,prompt,account_id,account_name,custom_model,custom_effort) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                   (alarm_id, time, int(enabled), now().isoformat(), mode, next_occurrence(time) if mode == 'once' else None,target,thread,name,prompt,account,email,c_model,c_effort))
     return alarm_id
 
 def advance_alarm(state,alarm_id):
@@ -203,17 +231,18 @@ def update_alarm(state, alarm_id, payload, *, thread_name=None, account_name=Non
         enabled = payload.get('enabled', bool(row['enabled']))
         target, thread, name, prompt = delivery_fields(payload,dict(row),thread_name)
         account,email = account_fields(payload,dict(row),account_name)
+        c_model, c_effort = custom_model_fields(payload, dict(row))
         avoid_ambiguous_default(db,time,target,account,alarm_id)
         if type(enabled) is not bool:
             raise ValueError('启停状态无效')
-        changed = bool(set(payload)&{'time','mode','target_type','thread_id','prompt','account_id'})
+        changed = bool(set(payload)&{'time','mode','target_type','thread_id','prompt','account_id','custom_model','custom_effort'})
         rearmed = enabled and (not row['enabled'] or row['consumed_at'] is not None or
                               (row['run_at'] and dt.datetime.fromisoformat(row['run_at']) <= now()))
         run_at = (next_occurrence(time) if changed or rearmed else row['run_at']) if mode == 'once' else None
         clear_result = changed or rearmed or mode == 'daily'
-        db.execute('UPDATE alarms SET time=?,mode=?,enabled=?,run_at=?,consumed_at=?,last_status=?,target_type=?,thread_id=?,thread_name=?,prompt=?,account_id=?,account_name=?,revision=revision+1 WHERE id=?',
+        db.execute('UPDATE alarms SET time=?,mode=?,enabled=?,run_at=?,consumed_at=?,last_status=?,target_type=?,thread_id=?,thread_name=?,prompt=?,account_id=?,account_name=?,custom_model=?,custom_effort=?,revision=revision+1 WHERE id=?',
                    (time, mode, int(enabled), run_at,
-                    None if clear_result else row['consumed_at'], None if clear_result else row['last_status'],target,thread,name,prompt,account,email,alarm_id))
+                    None if clear_result else row['consumed_at'], None if clear_result else row['last_status'],target,thread,name,prompt,account,email,c_model,c_effort,alarm_id))
 
 def toggle_alarm(state, alarm_id, payload):
     # Backward-compatible helper; HTTP PATCH also supports time and mode edits.
@@ -250,6 +279,26 @@ def delete_alarm(state, alarm_id):
         if result.rowcount != 1:
             raise LookupError('这个时间已被删除')
 
+def trigger_stats(state, current=None):
+    day_prefix = (current or now()).date().isoformat()
+    with database(state) as db:
+        r1 = db.execute("SELECT COUNT(*), COALESCE(SUM(COALESCE(tokens, 14824)), 0) FROM runs WHERE status='verified_completed'").fetchone()
+        r2 = db.execute("SELECT COUNT(*), COALESCE(SUM(COALESCE(tokens, 14824)), 0) FROM account_runs WHERE status='completed'").fetchone()
+        t1 = db.execute(
+            "SELECT COUNT(*), COALESCE(SUM(COALESCE(tokens, 14824)), 0) FROM runs WHERE status='verified_completed' AND (slot LIKE ? OR at LIKE ?)",
+            (f'%{day_prefix}%', f'{day_prefix}%')
+        ).fetchone()
+        t2 = db.execute(
+            "SELECT COUNT(*), COALESCE(SUM(COALESCE(tokens, 14824)), 0) FROM account_runs WHERE status='completed' AND (scheduled LIKE ? OR at LIKE ?)",
+            (f'{day_prefix}%', f'{day_prefix}%')
+        ).fetchone()
+        return {
+            'trigger_count': int(r1[0] + r2[0]),
+            'trigger_tokens': int(r1[1] + r2[1]),
+            'today_count': int(t1[0] + t2[0]),
+            'today_tokens': int(t1[1] + t2[1]),
+        }
+
 def snapshot(state):
     current = now()
     alarms = list_alarms(state, current)
@@ -266,4 +315,5 @@ def snapshot(state):
                 alarm['last_run']=dict(run) if run else None
     upcoming = sorted((a for a in alarms if a['enabled']), key=lambda a: a['next_at'])
     return {'alarms': alarms, 'now': current.isoformat(), 'timezone': 'Asia/Taipei',
-            'next': upcoming[0] if upcoming else None, 'model': '6 Luna', 'effort': 'Light', 'message': 'ok'}
+            'next': upcoming[0] if upcoming else None, 'model': '6 Luna', 'effort': 'Light', 'message': 'ok',
+            'stats': trigger_stats(state, current)}

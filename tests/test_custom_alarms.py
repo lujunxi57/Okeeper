@@ -84,6 +84,13 @@ class CustomTests(unittest.TestCase):
         self.assertEqual(set(start),{'threadId','input','clientUserMessageId'})
         resume=next(p for m,p in rpc.calls if m=='thread/resume');self.assertEqual(set(resume),{'threadId','excludeTurns'})
         row=self.run_row(slot);self.assertEqual((row['model'],row['effort']),('gpt-6.1-sol','high'))
+    def test_custom_model_and_effort_override_when_specified(self):
+        id=self.create(custom_model='gpt-6-luna',custom_effort='max');slot=self.reserve(id);rpc=FakeRPC(self)
+        with patch.object(w,'RPC',lambda:rpc):w.execute(slot)
+        self.assertEqual(self.run_row(slot)['status'],'completed')
+        start=next(p for m,p in rpc.calls if m=='turn/start')
+        self.assertEqual((start.get('model'),start.get('effort')),('gpt-6-luna','max'))
+        row=self.run_row(slot);self.assertEqual((row['model'],row['effort']),('gpt-6-luna','max'))
     def test_missing_model_settings_fails_without_fallback(self):
         id=self.create();slot=self.reserve(id);rpc=FakeRPC(self,effort=None)
         with patch.object(w,'RPC',lambda:rpc):w.execute(slot)

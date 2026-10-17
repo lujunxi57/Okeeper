@@ -139,13 +139,22 @@ def execute(slot):
         if skip:store.finish(STATE,run,skip);return
         if not store.unchanged(STATE,run):store.finish(STATE,run,'skipped_changed');return
         if (now()-scheduled).total_seconds()>MAX_LATE:store.finish(STATE,run,'skipped_missed');return
-        store.update(STATE,slot,'sending',model=settings['model'],effort=settings['reasoningEffort'])
+        alarm_cfg=run.get('alarm') or {}
+        override_model=(alarm_cfg.get('custom_model') or '').strip()
+        override_effort=(alarm_cfg.get('custom_effort') or '').strip()
+        used_model=override_model or settings['model']
+        used_effort=(override_effort or settings.get('reasoningEffort') or 'medium') if override_model else settings['reasoningEffort']
+        store.update(STATE,slot,'sending',model=used_model,effort=used_effort)
         rpc.events.clear()
-        result=rpc.call('turn/start',{'threadId':run['thread_id'],
+        turn_params={'threadId':run['thread_id'],
             'input':[{'type':'text','text':run['prompt'],'text_elements':[]}],
-            'clientUserMessageId':str(uuid.uuid5(uuid.NAMESPACE_URL,slot))})
+            'clientUserMessageId':str(uuid.uuid5(uuid.NAMESPACE_URL,slot))}
+        if override_model:
+            turn_params['model']=used_model
+            turn_params['effort']=used_effort
+        result=rpc.call('turn/start',turn_params)
         turn=result['turn']['id'];store.update(STATE,slot,'accepted',turn_id=turn)
-        log('custom_accepted',slot=slot,thread=run['thread_id'],turn_id=turn,model=settings['model'],effort=settings['reasoningEffort'])
+        log('custom_accepted',slot=slot,thread=run['thread_id'],turn_id=turn,model=used_model,effort=used_effort)
         observe(rpc,run,turn)
         store.finish(STATE,run,'completed',completed_at=now().isoformat())
         log('custom_verified_completed',slot=slot,thread=run['thread_id'],turn_id=turn)

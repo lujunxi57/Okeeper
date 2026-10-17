@@ -8,6 +8,7 @@ from schedule_store import database
 
 SOURCES=['cli','vscode','exec','appServer','subAgent','subAgentReview','subAgentCompact','subAgentThreadSpawn','subAgentOther','unknown']
 _cache={}
+_models_cache=None
 _lock=threading.Lock()
 
 def managed_ids(state):
@@ -24,6 +25,7 @@ def describe(thread,owned,archived=False):
     reason='自动触发会话不可选' if is_managed(thread,owned) else '此会话不支持直接发送' if thread.get('canAcceptDirectInput') is False or thread.get('ephemeral') else ''
     return {'id':thread['id'],'name':thread.get('name') or (thread.get('preview') or '未命名会话').splitlines()[0][:120],
             'cwd':thread.get('cwd',''),'archived':archived,'status':thread.get('status',{}).get('type','notLoaded'),
+            'model':thread.get('model') or '','effort':thread.get('reasoningEffort') or '',
             'selectable':not reason,'reason':reason}
 
 def list_sessions(state, *, refresh=False):
@@ -58,3 +60,28 @@ def validate_target(state,thread_id,rpc=None):
         return thread,meta
     finally:
         if own_rpc:rpc.close()
+
+def list_models(*, refresh=False):
+    global _models_cache
+    with _lock:
+        if _models_cache and not refresh and time.monotonic()-_models_cache[0]<30:
+            return _models_cache[1]
+        rpc=RPC()
+        try:
+            page=rpc.call('model/list',{})
+            models=[]
+            for item in page.get('data',[]):
+                if item.get('hidden'):continue
+                mid=item.get('model') or item.get('id') or ''
+                if not mid:continue
+                efforts=[e.get('reasoningEffort') for e in item.get('supportedReasoningEfforts',[]) if e.get('reasoningEffort')]
+                models.append({
+                    'id':mid,
+                    'name':item.get('displayName') or mid,
+                    'default_effort':item.get('defaultReasoningEffort') or (efforts[0] if efforts else 'medium'),
+                    'efforts':efforts or ['low','medium','high'],
+                })
+            _models_cache=(time.monotonic(),models)
+            return models
+        finally:
+            rpc.close()
