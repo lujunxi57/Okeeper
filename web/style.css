@@ -400,7 +400,7 @@ dialog::backdrop{background:#1e2f1d38;backdrop-filter:blur(4px)}
 .mascot-minimize:hover{background:#e3eedb;transform:scale(1.1)}
 .mascot-bubble{pointer-events:auto;position:relative;max-width:184px;padding:7px 11px;border-radius:12px 12px 4px 12px;background:#243b2b;color:#f3f7ef;font-size:11px;font-weight:500;line-height:1.45;box-shadow:0 6px 18px #1b2e2026;border:1px solid #3d6247;transform-origin:bottom right;transition:transform .28s cubic-bezier(.34,1.56,.64,1),opacity .22s}
 .mascot-bubble::after{content:"";position:absolute;bottom:-6px;right:28px;width:10px;height:10px;background:#243b2b;border-right:1px solid #3d6247;border-bottom:1px solid #3d6247;transform:rotate(45deg)}
-.mascot-stage{pointer-events:auto;width:184px;height:154px;cursor:pointer;user-select:none;filter:drop-shadow(0 10px 20px rgba(30,50,35,.15));transition:transform .25s cubic-bezier(.34,1.56,.64,1)}
+.mascot-stage{pointer-events:auto;width:198px;height:156px;cursor:pointer;user-select:none;filter:drop-shadow(0 10px 20px rgba(30,50,35,.15));transition:transform .25s cubic-bezier(.34,1.56,.64,1)}
 .mascot-stage:hover{transform:translateY(-3px) scale(1.02)}
 .mascot-svg{width:100%;height:100%;overflow:visible;fill:initial;stroke:none}
 .mascot-svg text.zzz{font-family:ui-monospace,SFMono-Regular,monospace;font-weight:800;fill:#557a4e;stroke:none;user-select:none}
@@ -422,20 +422,20 @@ dialog::backdrop{background:#1e2f1d38;backdrop-filter:blur(4px)}
   0%,100%{transform:scale(.4);opacity:.65}
   50%{transform:scale(1.24);opacity:.95}
 }
-.mascot-svg .codex-char{transform-origin:152px 148px;animation:codex-tiptoe 3.6s ease-in-out infinite}
+.mascot-svg .codex-char{transform-origin:170px 144px;animation:codex-tiptoe 3.6s ease-in-out infinite}
 @keyframes codex-tiptoe{
   0%,100%{transform:translateY(0) rotate(0deg)}
-  50%{transform:translateY(-2.5px) rotate(-1.5deg)}
+  50%{transform:translateY(-2px) rotate(-1deg)}
 }
-.mascot-svg .codex-head-group{transform-origin:148px 102px;animation:codex-peek-nod 4.4s ease-in-out infinite}
+.mascot-svg .codex-head-group{transform-origin:166px 94px;animation:codex-peek-nod 4.4s ease-in-out infinite}
 @keyframes codex-peek-nod{
   0%,100%{transform:translateY(0) rotate(0deg)}
-  35%{transform:translateY(2.5px) rotate(-4deg)}
-  62%{transform:translateY(5px) rotate(-7.5deg)}
-  68%{transform:translateY(-2.5px) rotate(3deg)}
+  35%{transform:translateY(2.5px) rotate(-3.5deg)}
+  62%{transform:translateY(5px) rotate(-6.5deg)}
+  68%{transform:translateY(-2px) rotate(2.5deg)}
   76%{transform:translateY(0) rotate(0deg)}
 }
-.mascot-svg .codex-eyes{transform-origin:148px 74px;animation:codex-blink 4.2s infinite}
+.mascot-svg .codex-eyes{transform-origin:166px 66px;animation:codex-blink 4.2s infinite}
 @keyframes codex-blink{
   0%,44%,48%,92%,96%,100%{transform:scaleY(1)}
   46%,94%{transform:scaleY(.12)}
@@ -450,11 +450,23 @@ dialog::backdrop{background:#1e2f1d38;backdrop-filter:blur(4px)}
   0%,100%{fill:#9be580;r:4.8px}
   50%{fill:#d7ffbf;r:5.6px}
 }
-.mascot-svg .paw-l{transform-origin:110px 127px;animation:paw-tap 2.2s ease-in-out infinite}
-.mascot-svg .paw-r{transform-origin:127px 123px;animation:paw-tap 2.2s ease-in-out 1.1s infinite}
-@keyframes paw-tap{
-  0%,80%,100%{transform:translateY(0)}
-  90%{transform:translateY(-2.5px)}
+.mascot-svg .type-paw-l{transform-origin:152px 106px;animation:paw-type .24s ease-in-out infinite alternate}
+.mascot-svg .type-paw-r{transform-origin:174px 106px;animation:paw-type .24s ease-in-out .12s infinite alternate}
+@keyframes paw-type{
+  0%{transform:translateY(0) rotate(0deg)}
+  100%{transform:translateY(-3.2px) rotate(4deg)}
+}
+.mascot-svg .holo-code{animation:holo-float 2.2s ease-in-out infinite}
+@keyframes holo-float{
+  0%,100%{transform:translateY(0);opacity:.92}
+  50%{transform:translateY(-3px);opacity:1}
+}
+.mascot-svg .steam{animation:steam-rise 2.4s ease-in-out infinite}
+.mascot-svg .steam.s2{animation-delay:1.2s}
+@keyframes steam-rise{
+  0%{opacity:0;transform:translateY(2px)}
+  50%{opacity:.75}
+  100%{opacity:0;transform:translateY(-5px)}
 }
 .mascot-svg .codex-sweat{opacity:0;transform:translateY(4px);transition:opacity .2s,transform .25s}
 .cyber-mascot.is-startled .codex-sweat,.cyber-mascot.is-scrolling .codex-sweat{opacity:1;transform:translateY(-2px)}

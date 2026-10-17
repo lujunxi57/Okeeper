@@ -6,12 +6,12 @@
   <meta name="theme-color" content="#f5f5ef">
   <meta name="description" content="赛博早八 —— Codex，你这个年纪怎么睡得着的？">
   <title>Okeeper · 赛博早八</title>
-  <link rel="icon" type="image/png" href="/icon.png?v=20261017-okeeper-14">
-  <link rel="apple-touch-icon" href="/icon.png?v=20261017-okeeper-14">
+  <link rel="icon" type="image/png" href="/icon.png?v=20261017-okeeper-15">
+  <link rel="apple-touch-icon" href="/icon.png?v=20261017-okeeper-15">
   <link rel="stylesheet" href="/vendor/daisyui-5.7.50.css">
-  <link rel="stylesheet" href="/style.css?v=20261017-okeeper-14">
+  <link rel="stylesheet" href="/style.css?v=20261017-okeeper-15">
   <script src="/vendor/motion-14.2.0.js" defer></script>
-  <script src="/app.js?v=20261017-okeeper-14" defer></script>
+  <script src="/app.js?v=20261017-okeeper-15" defer></script>
 </head>
 <body>
   <div class="shell">
@@ -148,164 +148,192 @@
     <div class="mascot-expanded">
       <button id="mascot-minimize" class="mascot-minimize" type="button" aria-label="最小化为圆形气泡" title="最小化">−</button>
       <div id="mascot-bubble" class="mascot-bubble" role="status">呜呜…主人睡得好香，我还要盯表发 ok (；′⌒`)</div>
-      <div id="mascot-stage" class="mascot-stage" title="戳一戳床边守夜的 Codex">
-        <svg class="mascot-svg" viewBox="0 0 210 176" aria-hidden="true">
+      <div id="mascot-stage" class="mascot-stage" title="戳一戳正在工位加班的 Codex">
+        <svg class="mascot-svg" viewBox="0 0 232 182" aria-hidden="true">
           <!-- 2.5D Isometric Angled Floor Rug / Base Shadow -->
           <g class="floor-group">
-            <path d="M 14 134 L 116 106 C 128 103 142 105 152 111 L 198 138 C 206 143 204 152 192 156 L 88 172 C 74 174 58 171 48 165 L 12 144 C 5 140 6 136 14 134 Z" fill="#e2ead8" stroke="#c2d0b4" stroke-width="2"/>
-            <path d="M 24 136 L 116 111 C 125 109 136 110 144 115 L 184 138 C 190 142 188 148 178 151 L 86 165 C 75 167 63 164 55 159 L 22 141 Z" fill="#ebf1e4" stroke="#d3dec7" stroke-width="1.2" stroke-dasharray="4 3"/>
+            <path d="M 12 136 L 122 104 C 136 100 152 102 164 109 L 220 142 C 228 147 226 156 212 160 L 96 177 C 80 179 62 176 50 169 L 10 146 C 3 142 4 138 12 136 Z" fill="#e2ead8" stroke="#c2d0b4" stroke-width="2"/>
+            <path d="M 22 138 L 122 109 C 133 106 146 108 156 114 L 206 142 C 212 146 210 152 198 155 L 94 170 C 81 172 67 169 57 163 L 20 143 Z" fill="#ebf1e4" stroke="#d3dec7" stroke-width="1.2" stroke-dasharray="4 3"/>
           </g>
 
-          <!-- 2.5D Isometric Bed (Angled from top-left to bottom-right) -->
+          <!-- LEFT: 2.5D Isometric Bed (Human Sleeping Soundly) -->
           <g class="bed-group">
-            <!-- Bed Shadow on Rug -->
-            <path d="M 16 136 L 106 112 L 150 138 L 58 164 Z" fill="#bdccb0" opacity="0.55"/>
-            <!-- Wooden Headboard (Left-Back 2.5D Plane) -->
-            <path d="M 16 84 L 88 64 C 93 62.5 97 66 97 71 L 97 112 L 16 135 L 16 91 C 16 87 13 85 16 84 Z" fill="#8c6d53" stroke="#2b3d2f" stroke-width="2.3" stroke-linejoin="round"/>
-            <path d="M 22 89 L 89 70 L 89 104 L 22 124 Z" fill="#a48266" stroke="#2b3d2f" stroke-width="1.6" stroke-linejoin="round"/>
-            <!-- Bed Frame & Mattress Base (3D Extruded Box) -->
-            <!-- Top Mattress Surface -->
-            <path d="M 16 116 L 94 94 L 146 122 L 66 146 Z" fill="#f7f9f2" stroke="#2b3d2f" stroke-width="2.2" stroke-linejoin="round"/>
-            <!-- Front-Left Mattress Side -->
-            <path d="M 16 116 L 66 146 L 66 159 L 16 129 Z" fill="#d9e2cf" stroke="#2b3d2f" stroke-width="2.2" stroke-linejoin="round"/>
-            <!-- Front-Right Bed Sill Side (where Codex clings!) -->
-            <path d="M 66 146 L 146 122 L 146 135 L 66 159 Z" fill="#c5d3b8" stroke="#2b3d2f" stroke-width="2.2" stroke-linejoin="round"/>
-            <!-- Wooden Bed Legs -->
-            <path d="M 18 130 L 18 138 L 24 141 L 24 133 Z" fill="#6e533e" stroke="#2b3d2f" stroke-width="1.8"/>
-            <path d="M 62 157 L 62 165 L 70 165 L 70 157 Z" fill="#6e533e" stroke="#2b3d2f" stroke-width="1.8"/>
-            <path d="M 140 134 L 140 142 L 146 140 L 146 132 Z" fill="#6e533e" stroke="#2b3d2f" stroke-width="1.8"/>
-
-            <!-- Angled Soft Pillow on Bed -->
-            <path d="M 26 105 C 24 98 48 90 64 91 C 74 92 78 99 72 104 C 62 111 32 116 26 105 Z" fill="#ffffff" stroke="#3c5240" stroke-width="2.1"/>
-
-            <!-- Sleeping Human Head on Pillow -->
+            <path d="M 14 138 L 96 114 L 136 138 L 52 164 Z" fill="#bdccb0" opacity="0.55"/>
+            <!-- Wooden Headboard -->
+            <path d="M 14 86 L 80 67 C 85 65.5 89 69 89 74 L 89 112 L 14 135 L 14 92 Z" fill="#8c6d53" stroke="#2b3d2f" stroke-width="2.2" stroke-linejoin="round"/>
+            <path d="M 20 91 L 81 73 L 81 105 L 20 124 Z" fill="#a48266" stroke="#2b3d2f" stroke-width="1.5" stroke-linejoin="round"/>
+            <!-- Mattress Top & Sides -->
+            <path d="M 14 117 L 86 96 L 132 122 L 60 145 Z" fill="#f7f9f2" stroke="#2b3d2f" stroke-width="2.1" stroke-linejoin="round"/>
+            <path d="M 14 117 L 60 145 L 60 157 L 14 129 Z" fill="#d9e2cf" stroke="#2b3d2f" stroke-width="2.1" stroke-linejoin="round"/>
+            <path d="M 60 145 L 132 122 L 132 134 L 60 157 Z" fill="#c5d3b8" stroke="#2b3d2f" stroke-width="2.1" stroke-linejoin="round"/>
+            <!-- Bed Legs -->
+            <path d="M 16 130 L 16 138 L 22 141 L 22 133 Z" fill="#6e533e" stroke="#2b3d2f" stroke-width="1.7"/>
+            <path d="M 56 155 L 56 163 L 64 163 L 64 155 Z" fill="#6e533e" stroke="#2b3d2f" stroke-width="1.7"/>
+            <!-- Soft Pillow -->
+            <path d="M 24 106 C 22 99 44 91 59 92 C 68 93 72 100 66 105 C 57 111 30 116 24 106 Z" fill="#ffffff" stroke="#3c5240" stroke-width="2"/>
+            <!-- Sleeping Human Head -->
             <g class="human-head">
-              <!-- Striped/Dotted Sage Nightcap (睡帽垂在枕边) -->
-              <path d="M 32 88 C 36 70 58 68 72 78 C 62 83 56 89 54 95 Z" fill="#5e8a50" stroke="#263d2b" stroke-width="2.1" stroke-linejoin="round"/>
-              <circle cx="75" cy="79" r="4.5" fill="#f7faf2" stroke="#263d2b" stroke-width="2"/>
-              <!-- Human Head -->
-              <circle cx="48" cy="96" r="14.5" fill="#fde5cf" stroke="#263d2b" stroke-width="2.2"/>
-              <!-- Hair Fringe -->
-              <path d="M 35 91 C 41 81 56 83 60 89 C 53 84 42 84 35 91 Z" fill="#2b332e"/>
-              <!-- Peaceful Closed Eyes (面向右侧床沿睡) -->
-              <path d="M 45 96 Q 49 100 53 96.5" fill="none" stroke="#263d2b" stroke-width="2.1" stroke-linecap="round"/>
-              <path d="M 55 94 Q 58 97.5 61 94" fill="none" stroke="#263d2b" stroke-width="1.9" stroke-linecap="round"/>
-              <!-- Rosy Sleeping Cheek -->
-              <ellipse cx="45" cy="101" rx="3.2" ry="1.8" fill="#f29b9b" opacity="0.55"/>
-              <!-- Cozy Sleeping Smile -->
-              <path d="M 50 103 Q 53 105.5 56 103" fill="none" stroke="#263d2b" stroke-width="1.8" stroke-linecap="round"/>
-              <!-- Expanding/Shrinking Snot Bubble (呼呼大睡鼻涕泡) -->
-              <circle cx="63" cy="99" r="6.8" fill="#d6f0ff" fill-opacity="0.82" stroke="#5c9ec0" stroke-width="1.6" class="snot-bubble"/>
-              <circle cx="61" cy="97" r="1.9" fill="#ffffff" class="snot-bubble"/>
+              <path d="M 30 89 C 34 72 54 70 67 79 C 58 84 52 90 50 96 Z" fill="#5e8a50" stroke="#263d2b" stroke-width="2" stroke-linejoin="round"/>
+              <circle cx="70" cy="80" r="4.2" fill="#f7faf2" stroke="#263d2b" stroke-width="1.9"/>
+              <circle cx="45" cy="97" r="13.8" fill="#fde5cf" stroke="#263d2b" stroke-width="2.1"/>
+              <path d="M 33 92 C 39 83 53 85 57 90 C 50 85 40 85 33 92 Z" fill="#2b332e"/>
+              <path d="M 42 97 Q 46 101 50 97.5" fill="none" stroke="#263d2b" stroke-width="2" stroke-linecap="round"/>
+              <path d="M 52 95 Q 55 98.5 58 95" fill="none" stroke="#263d2b" stroke-width="1.8" stroke-linecap="round"/>
+              <ellipse cx="42" cy="102" rx="3" ry="1.7" fill="#f29b9b" opacity="0.55"/>
+              <path d="M 47 104 Q 50 106.5 53 104" fill="none" stroke="#263d2b" stroke-width="1.7" stroke-linecap="round"/>
+              <!-- Snot Bubble -->
+              <circle cx="59" cy="100" r="6.5" fill="#d6f0ff" fill-opacity="0.82" stroke="#5c9ec0" stroke-width="1.5" class="snot-bubble"/>
+              <circle cx="57" cy="98" r="1.8" fill="#ffffff" class="snot-bubble"/>
             </g>
-
-            <!-- 2.5D Puffy Quilt / Blanket Draping Over the Bed (鼓起的立体被子) -->
+            <!-- Breathing Quilt -->
             <g class="quilt-group">
-              <!-- Quilt Top & Draped Side -->
-              <path d="M 34 118 C 52 100 88 94 114 104 L 142 120 L 142 130 L 66 153 L 66 144 L 34 125 Z" fill="#497551" stroke="#263d2b" stroke-width="2.3" stroke-linejoin="round"/>
-              <!-- Quilt Fold / Collar Cuff (被子翻折领口) -->
-              <path d="M 34 118 C 54 103 86 97 114 104 L 105 111 C 80 105 54 111 41 122 Z" fill="#dce8d2" stroke="#263d2b" stroke-width="2" stroke-linejoin="round"/>
-              <!-- Quilt Seam Lines -->
-              <path d="M 58 122 C 76 114 98 111 118 116" fill="none" stroke="#6c9973" stroke-width="1.8" stroke-linecap="round"/>
-              <path d="M 70 132 C 88 124 108 121 126 125" fill="none" stroke="#6c9973" stroke-width="1.8" stroke-linecap="round"/>
+              <path d="M 31 119 C 48 102 80 96 104 105 L 129 120 L 129 130 L 60 152 L 60 143 L 31 125 Z" fill="#497551" stroke="#263d2b" stroke-width="2.2" stroke-linejoin="round"/>
+              <path d="M 31 119 C 49 105 78 99 104 105 L 96 112 C 73 106 49 112 38 122 Z" fill="#dce8d2" stroke="#263d2b" stroke-width="1.9" stroke-linejoin="round"/>
+              <path d="M 53 123 C 70 115 90 112 108 117" fill="none" stroke="#6c9973" stroke-width="1.7" stroke-linecap="round"/>
             </g>
           </g>
 
           <!-- Floating Zzz from sleeping human -->
           <g class="zzz-group">
-            <text x="42" y="68" class="zzz z1">z</text>
-            <text x="30" y="50" class="zzz z2">Z</text>
-            <text x="18" y="30" class="zzz z3">Z</text>
+            <text x="38" y="69" class="zzz z1">z</text>
+            <text x="26" y="51" class="zzz z2">Z</text>
+            <text x="15" y="31" class="zzz z3">Z</text>
           </g>
 
-          <!-- Full-Body Chibi Codex Standing on the Floor Beside the Bed -->
-          <g class="codex-full">
-            <!-- Ground Shadow Under Codex's Feet on the Rug -->
-            <ellipse cx="154" cy="151" rx="22" ry="7.5" fill="#9fb292" opacity="0.7" class="codex-shadow"/>
+          <!-- RIGHT: Full-Body Chibi Codex Working at a 2.5D Computer Desk -->
+          <g class="codex-workstation">
+            <!-- Ground Shadow Under Desk & Codex -->
+            <ellipse cx="164" cy="154" rx="42" ry="12" fill="#9fb292" opacity="0.65"/>
 
+            <!-- Codex Sitting/Standing Behind the Desk -->
             <g class="codex-char">
-              <!-- Little Legs & Feet Standing on the Angled Floor (踩在地板上的小短腿) -->
+              <!-- Little Stool & Codex's Dangling/Standing Short Legs Under the Desk -->
               <g class="codex-legs">
-                <!-- Left Leg (closer to bed) -->
-                <path d="M 143 134 L 141 147 C 141 150 135 151 134 148 C 133 145 138 144 139 143 L 139 134 Z" fill="#588564" stroke="#243d2b" stroke-width="2.1" stroke-linejoin="round"/>
-                <ellipse cx="139" cy="149" rx="6.5" ry="3.8" transform="rotate(-12 139 149)" fill="#456e50" stroke="#243d2b" stroke-width="2"/>
-                <!-- Right Leg -->
-                <path d="M 161 136 L 161 149 C 161 152 155 153 154 150 L 156 136 Z" fill="#588564" stroke="#243d2b" stroke-width="2.1" stroke-linejoin="round"/>
-                <ellipse cx="159" cy="151" rx="6.5" ry="3.8" transform="rotate(8 159 151)" fill="#456e50" stroke="#243d2b" stroke-width="2"/>
+                <!-- Round Stool Base -->
+                <ellipse cx="176" cy="153" rx="13" ry="5" fill="#75876c" stroke="#243d2b" stroke-width="1.8"/>
+                <rect x="173" y="139" width="6" height="14" fill="#5b6d53" stroke="#243d2b" stroke-width="1.8"/>
+                <!-- Little Legs & Feet -->
+                <path d="M 164 132 L 160 146 L 167 147 L 170 133 Z" fill="#588564" stroke="#243d2b" stroke-width="2" stroke-linejoin="round"/>
+                <ellipse cx="161" cy="148" rx="6" ry="3.6" transform="rotate(-10 161 148)" fill="#456e50" stroke="#243d2b" stroke-width="1.9"/>
+                <path d="M 178 133 L 176 148 L 183 148 L 184 133 Z" fill="#588564" stroke="#243d2b" stroke-width="2" stroke-linejoin="round"/>
+                <ellipse cx="179" cy="150" rx="6" ry="3.6" transform="rotate(8 179 150)" fill="#456e50" stroke="#243d2b" stroke-width="1.9"/>
               </g>
 
-              <!-- Chibi Torso / Little Belly (圆滚滚的小身体) -->
+              <!-- Chibi Torso / Belly Behind Desk -->
               <g class="codex-torso">
-                <path d="M 134 102 C 131 114 132 132 140 137 C 148 141 162 141 168 136 C 174 130 173 113 168 102 Z" fill="#dcead2" stroke="#243d2b" stroke-width="2.4" stroke-linejoin="round"/>
-                <!-- Belly Screen / OK Heartbeat Badge -->
-                <rect x="141" y="111" width="22" height="16" rx="6" fill="#223b2a" stroke="#456e50" stroke-width="1.5"/>
-                <text x="145.5" y="122" font-family="ui-monospace,SFMono-Regular,monospace" font-size="8.5" font-weight="800" fill="#a9eb8e">OK</text>
+                <path d="M 152 96 C 149 109 150 128 158 134 C 166 138 182 138 188 133 C 194 127 192 108 187 96 Z" fill="#dcead2" stroke="#243d2b" stroke-width="2.3" stroke-linejoin="round"/>
+                <rect x="160" y="104" width="20" height="14" rx="5" fill="#223b2a" stroke="#456e50" stroke-width="1.4"/>
+                <text x="164" y="114" font-family="ui-monospace,SFMono-Regular,monospace" font-size="8" font-weight="800" fill="#a9eb8e">OK</text>
               </g>
 
-              <!-- Left Arm & Paw Reaching Out to Cling to the Bed Sill (扒着床沿的小胳膊和小手) -->
-              <g class="codex-arm-l">
-                <path d="M 135 107 C 124 110 116 118 112 126" fill="none" stroke="#98c48c" stroke-width="7.5" stroke-linecap="round"/>
-                <path d="M 135 107 C 124 110 116 118 112 126" fill="none" stroke="#243d2b" stroke-width="2.2" stroke-linecap="round"/>
-                <!-- Left Paw Gripping Bed Edge -->
-                <ellipse cx="110" cy="127" rx="7.2" ry="5.2" transform="rotate(-18 110 127)" fill="#98c48c" stroke="#243d2b" stroke-width="2.1" class="paw-l"/>
-                <line x1="107" y1="125" x2="108" y2="129" stroke="#243d2b" stroke-width="1.5" stroke-linecap="round"/>
-                <line x1="111" y1="124" x2="112" y2="128" stroke="#243d2b" stroke-width="1.5" stroke-linecap="round"/>
-              </g>
-
-              <!-- Right Arm & Paw Clinging to the Bed Corner -->
-              <g class="codex-arm-r">
-                <path d="M 146 112 C 138 118 133 122 129 124" fill="none" stroke="#98c48c" stroke-width="7" stroke-linecap="round"/>
-                <path d="M 146 112 C 138 118 133 122 129 124" fill="none" stroke="#243d2b" stroke-width="2.1" stroke-linecap="round"/>
-                <ellipse cx="127" cy="123" rx="6.8" ry="5" transform="rotate(-15 127 123)" fill="#98c48c" stroke="#243d2b" stroke-width="2.1" class="paw-r"/>
-                <line x1="124" y1="121" x2="125" y2="125" stroke="#243d2b" stroke-width="1.5" stroke-linecap="round"/>
-                <line x1="128" y1="120" x2="129" y2="124" stroke="#243d2b" stroke-width="1.5" stroke-linecap="round"/>
-              </g>
-
-              <!-- Codex Head (Tilted Slightly Towards the Bed, Nodding Off) -->
+              <!-- Codex Head (Glancing Pitifully at the Sleeping Owner While Typing) -->
               <g class="codex-head-group">
                 <!-- Antenna -->
                 <g class="codex-antenna">
-                  <path d="M 152 54 Q 156 39 165 37" fill="none" stroke="#3c6b4b" stroke-width="3" stroke-linecap="round"/>
-                  <circle cx="166" cy="36" r="4.8" fill="#9be580" stroke="#243d2b" stroke-width="1.9" class="antenna-bulb"/>
+                  <path d="M 170 46 Q 175 31 184 29" fill="none" stroke="#3c6b4b" stroke-width="3" stroke-linecap="round"/>
+                  <circle cx="185" cy="28" r="4.8" fill="#9be580" stroke="#243d2b" stroke-width="1.9" class="antenna-bulb"/>
                 </g>
                 <!-- Side Ear Bolts -->
-                <rect x="116" y="73" width="6.5" height="12" rx="3.2" fill="#588564" stroke="#243d2b" stroke-width="2"/>
-                <rect x="179" y="73" width="6.5" height="12" rx="3.2" fill="#588564" stroke="#243d2b" stroke-width="2"/>
-                <!-- Main Head Shell (with subtle 2.5D side depth) -->
-                <rect x="124" y="54" width="58" height="50" rx="20" fill="#c6d9b8" stroke="#243d2b" stroke-width="2.3"/>
-                <rect x="120" y="54" width="56" height="50" rx="20" fill="#e9f3e1" stroke="#243d2b" stroke-width="2.4"/>
+                <rect x="135" y="65" width="6.5" height="12" rx="3.2" fill="#588564" stroke="#243d2b" stroke-width="2"/>
+                <rect x="197" y="65" width="6.5" height="12" rx="3.2" fill="#588564" stroke="#243d2b" stroke-width="2"/>
+                <!-- Head Shell (2.5D depth) -->
+                <rect x="143" y="46" width="57" height="49" rx="19" fill="#c6d9b8" stroke="#243d2b" stroke-width="2.2"/>
+                <rect x="139" y="46" width="55" height="49" rx="19" fill="#e9f3e1" stroke="#243d2b" stroke-width="2.3"/>
                 <!-- Inner Screen Face -->
-                <rect x="126" y="61" width="44" height="35" rx="13" fill="#1c3525" stroke="#375f45" stroke-width="1.5"/>
-                <!-- Dark Under-Eye Bags (熬夜黑眼圈) -->
-                <path d="M 132 81 Q 138 84 144 81" fill="none" stroke="#4f6d5a" stroke-width="1.8" stroke-linecap="round"/>
-                <path d="M 152 81 Q 158 84 164 81" fill="none" stroke="#4f6d5a" stroke-width="1.8" stroke-linecap="round"/>
-                <!-- Big Pitiful Watery Puppy Eyes Looking at Sleeping Owner -->
+                <rect x="145" y="53" width="43" height="34" rx="12.5" fill="#1c3525" stroke="#375f45" stroke-width="1.5"/>
+                <!-- Dark Under-Eye Bags (熬夜打工黑眼圈) -->
+                <path d="M 150 73 Q 156 76 162 73" fill="none" stroke="#4f6d5a" stroke-width="1.8" stroke-linecap="round"/>
+                <path d="M 170 73 Q 176 76 182 73" fill="none" stroke="#4f6d5a" stroke-width="1.8" stroke-linecap="round"/>
+                <!-- Big Watery Puppy Eyes Glancing Left at Sleeping Human -->
                 <g class="codex-eyes">
-                  <circle cx="138" cy="74" r="5.4" fill="#b8f29c"/>
-                  <circle cx="136.2" cy="72.2" r="2.2" fill="#ffffff"/>
-                  <circle cx="139.8" cy="75.8" r="1.1" fill="#ffffff"/>
-                  <circle cx="158" cy="74" r="5.4" fill="#b8f29c"/>
-                  <circle cx="156.2" cy="72.2" r="2.2" fill="#ffffff"/>
-                  <circle cx="159.8" cy="75.8" r="1.1" fill="#ffffff"/>
+                  <circle cx="156" cy="66" r="5.3" fill="#b8f29c"/>
+                  <circle cx="154" cy="64.2" r="2.2" fill="#ffffff"/>
+                  <circle cx="157.5" cy="67.8" r="1.1" fill="#ffffff"/>
+                  <circle cx="176" cy="66" r="5.3" fill="#b8f29c"/>
+                  <circle cx="174" cy="64.2" r="2.2" fill="#ffffff"/>
+                  <circle cx="177.5" cy="67.8" r="1.1" fill="#ffffff"/>
                 </g>
                 <!-- Pitiful Droopy Eyebrows (八字委屈眉) -->
-                <path d="M 131 67.5 L 142 65" fill="none" stroke="#b8f29c" stroke-width="2.2" stroke-linecap="round"/>
-                <path d="M 165 67.5 L 154 65" fill="none" stroke="#b8f29c" stroke-width="2.2" stroke-linecap="round"/>
+                <path d="M 149 59.5 L 160 57" fill="none" stroke="#b8f29c" stroke-width="2.2" stroke-linecap="round"/>
+                <path d="M 183 59.5 L 172 57" fill="none" stroke="#b8f29c" stroke-width="2.2" stroke-linecap="round"/>
                 <!-- Teardrops Welling at Eye Corners -->
-                <path d="M 131 77 C 128 82 133 85 133 79 Z" fill="#7ad0f5" class="codex-tear tear-l"/>
-                <path d="M 165 77 C 168 82 163 85 163 79 Z" fill="#7ad0f5" class="codex-tear tear-r"/>
+                <path d="M 149 69 C 146 74 151 77 151 71 Z" fill="#7ad0f5" class="codex-tear tear-l"/>
+                <path d="M 183 69 C 186 74 181 77 181 71 Z" fill="#7ad0f5" class="codex-tear tear-r"/>
                 <!-- Pitiful Wobbly Mouth -->
-                <path d="M 144 86.5 Q 148 83 152 86.5" fill="none" stroke="#b8f29c" stroke-width="2.1" stroke-linecap="round"/>
+                <path d="M 162 78.5 Q 166 75 170 78.5" fill="none" stroke="#b8f29c" stroke-width="2.1" stroke-linecap="round"/>
                 <!-- Rosy Cheeks -->
-                <ellipse cx="130.5" cy="79" rx="3" ry="1.7" fill="#f29b9b" opacity="0.55"/>
-                <ellipse cx="165.5" cy="79" rx="3" ry="1.7" fill="#f29b9b" opacity="0.55"/>
+                <ellipse cx="148.5" cy="71" rx="2.8" ry="1.6" fill="#f29b9b" opacity="0.55"/>
+                <ellipse cx="183.5" cy="71" rx="2.8" ry="1.6" fill="#f29b9b" opacity="0.55"/>
+              </g>
+            </g>
+
+            <!-- 2.5D Isometric Computer Desk in Front of Codex -->
+            <g class="desk-group">
+              <!-- Desk Legs -->
+              <path d="M 114 128 L 114 154 L 119 156 L 119 130 Z" fill="#6e533e" stroke="#243d2b" stroke-width="1.9" stroke-linejoin="round"/>
+              <path d="M 152 146 L 152 169 L 157 167 L 157 144 Z" fill="#594230" stroke="#243d2b" stroke-width="1.9" stroke-linejoin="round"/>
+              <path d="M 204 130 L 204 154 L 209 152 L 209 128 Z" fill="#6e533e" stroke="#243d2b" stroke-width="1.9" stroke-linejoin="round"/>
+
+              <!-- 2.5D Angled Wooden Desk Tabletop (桌面 + 立体厚度边) -->
+              <path d="M 108 122 L 166 105 L 214 126 L 154 145 Z" fill="#d9be9b" stroke="#243d2b" stroke-width="2.2" stroke-linejoin="round"/>
+              <path d="M 108 122 L 154 145 L 154 151 L 108 128 Z" fill="#b89872" stroke="#243d2b" stroke-width="2.1" stroke-linejoin="round"/>
+              <path d="M 154 145 L 214 126 L 214 132 L 154 151 Z" fill="#9e7f5b" stroke="#243d2b" stroke-width="2.1" stroke-linejoin="round"/>
+
+              <!-- Isometric Keyboard on Desk -->
+              <path d="M 138 120 L 164 112 L 176 118 L 150 126 Z" fill="#eff4ea" stroke="#243d2b" stroke-width="1.7" stroke-linejoin="round"/>
+              <line x1="145" y1="121" x2="163" y2="115" stroke="#5d785e" stroke-width="1.4" stroke-dasharray="2.5 2"/>
+              <line x1="149" y1="123" x2="167" y2="117" stroke="#5d785e" stroke-width="1.4" stroke-dasharray="2.5 2"/>
+
+              <!-- Codex's Little Arms & Paws Furiously Typing on the Keyboard! (啪啪敲键盘的小手) -->
+              <g class="codex-typing-arms">
+                <g class="type-paw-l">
+                  <path d="M 154 103 C 149 109 147 114 148 119" fill="none" stroke="#98c48c" stroke-width="6.5" stroke-linecap="round"/>
+                  <path d="M 154 103 C 149 109 147 114 148 119" fill="none" stroke="#243d2b" stroke-width="2" stroke-linecap="round"/>
+                  <ellipse cx="148" cy="120" rx="5.8" ry="4.2" transform="rotate(-14 148 120)" fill="#98c48c" stroke="#243d2b" stroke-width="1.9"/>
+                </g>
+                <g class="type-paw-r">
+                  <path d="M 178 104 C 173 109 168 113 164 116" fill="none" stroke="#98c48c" stroke-width="6.5" stroke-linecap="round"/>
+                  <path d="M 178 104 C 173 109 168 113 164 116" fill="none" stroke="#243d2b" stroke-width="2" stroke-linecap="round"/>
+                  <ellipse cx="163" cy="116" rx="5.8" ry="4.2" transform="rotate(-14 163 116)" fill="#98c48c" stroke="#243d2b" stroke-width="1.9"/>
+                </g>
+              </g>
+
+              <!-- 2.5D Laptop / Monitor on the Left-Front of the Desk Facing Codex -->
+              <g class="desk-monitor">
+                <!-- Soft Green Screen Glow Cast Toward Codex -->
+                <polygon points="122,94 156,78 164,108 128,118" fill="#a8f08e" opacity="0.18" class="screen-glow"/>
+                <!-- Laptop Base / Stand -->
+                <path d="M 122 121 L 146 113 L 154 117 L 130 125 Z" fill="#7c8f76" stroke="#243d2b" stroke-width="1.8" stroke-linejoin="round"/>
+                <!-- Angled Monitor / Laptop Lid (Back shell visible in 2.5D + bright glowing top edge) -->
+                <path d="M 114 94 L 142 84 C 145 83 148 85 148 88 L 146 114 L 118 123 L 112 99 C 111 96 112 95 114 94 Z" fill="#3b5943" stroke="#243d2b" stroke-width="2.1" stroke-linejoin="round"/>
+                <!-- Glowing Terminal Edge Rim -->
+                <path d="M 115 94 L 143 84 L 147 86 L 119 96 Z" fill="#b4f59b" stroke="#243d2b" stroke-width="1.5" stroke-linejoin="round"/>
+                <!-- Glowing Logo on Back of Laptop Lid -->
+                <circle cx="130" cy="104" r="4.2" fill="#a8f08e" stroke="#243d2b" stroke-width="1.4" class="laptop-logo"/>
+                <!-- Floating Holographic Code Bubble / Terminal Lines Rising Above Screen -->
+                <g class="holo-code">
+                  <rect x="108" y="68" width="28" height="17" rx="5" fill="#1b3624" fill-opacity="0.92" stroke="#7bd663" stroke-width="1.4"/>
+                  <text x="112" y="79" font-family="ui-monospace,SFMono-Regular,monospace" font-size="8" font-weight="800" fill="#b4f59b">&gt; ok_</text>
+                </g>
+              </g>
+
+              <!-- Steaming Coffee Mug on Right Corner of Desk (续命电子咖啡) -->
+              <g class="coffee-mug">
+                <ellipse cx="192" cy="127" rx="6.5" ry="3" fill="#b0bf9f"/>
+                <path d="M 196 118 C 201 118 201 124 196 124" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+                <path d="M 196 118 C 201 118 201 124 196 124" fill="none" stroke="#243d2b" stroke-width="1.4" stroke-linecap="round"/>
+                <rect x="186" y="115" width="11" height="12" rx="3" fill="#ffffff" stroke="#243d2b" stroke-width="1.9"/>
+                <ellipse cx="191.5" cy="116" rx="4.2" ry="1.6" fill="#6f4e37"/>
+                <!-- Rising Steam Wisps -->
+                <path d="M 189 111 Q 187 106 190 102" fill="none" stroke="#8fa685" stroke-width="1.5" stroke-linecap="round" class="steam s1"/>
+                <path d="M 194 112 Q 196 107 193 103" fill="none" stroke="#8fa685" stroke-width="1.5" stroke-linecap="round" class="steam s2"/>
               </g>
             </g>
 
             <!-- Sweat Drops When Poked/Startled -->
             <g class="codex-sweat">
-              <path d="M 182 44 C 185 50 179 53 180 47 Z" fill="#7fc8f8"/>
-              <path d="M 190 53 C 193 59 187 62 188 56 Z" fill="#7fc8f8"/>
+              <path d="M 202 38 C 205 44 199 47 200 41 Z" fill="#7fc8f8"/>
+              <path d="M 210 47 C 213 53 207 56 208 50 Z" fill="#7fc8f8"/>
             </g>
           </g>
         </svg>

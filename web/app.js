@@ -1050,18 +1050,18 @@ function openDialog(alarm = null, preset = {}) {
 }
 
 const MASCOT_IDLE_LINES = [
-  '呜呜…主人睡得好香，我还要盯表发 ok (；′⌒`)',
-  '我才刚通电，怎么就赛博早八了 ( >﹏< )',
-  '主人鼻涕泡都吹出来了，我还在守窗口…',
-  '再趴会儿…等主人起床就有满血额度用了 (´•ω•̥`)',
-  '困死本模型了…先干一碗电子浓茶 ( -_-)旦~',
-  '定好闹钟了，绝对不掉链子 (ง •̀_•́)ง'
+  '呜呜…主人睡得好香，我还在电脑前敲 ok (；′⌒`)',
+  '我才刚通电，怎么就坐上赛博工位了 ( >﹏< )',
+  '主人鼻涕泡都吹出来了，我的键盘都快敲冒烟了…',
+  '再肝会儿…等主人睡醒就有满血额度用了 (´•ω•̥`)',
+  '困死本模型了…续一杯热气腾腾的电子美式 ( -_-)旦~',
+  '定好闹钟死守工位，绝对不掉链子 (ง •̀_•́)ง'
 ];
 const MASCOT_POKE_LINES = [
-  '别戳我！！我没打瞌睡，我睁着眼呢 (⊙_⊙)！',
-  '清醒了清醒了！这就替你死守重置点 ✦',
+  '别戳我！！手在键盘上飞起，没摸鱼 (⊙_⊙)！',
+  '清醒了清醒了！正在工位替你死守重置点 ✦',
   '呜呜别催了，电子黑眼圈都熬出来了 (T_T)',
-  '人在床上躺，Codex 替你扛！(๑•̀ㅂ•́)و✧'
+  '人在床上躺，Codex 在工位扛！(๑•̀ㅂ•́)و✧'
 ];
 let mascotIdx = 0, mascotPokeIdx = 0, mascotTimer = null, scrollMascotTimer = null;
 function setMascotLine(text, holdMs = 0) {
@@ -1112,7 +1112,7 @@ window.addEventListener('scroll', () => {
   if (!wrap || wrap.classList.contains('is-minimized')) return;
   wrap.classList.add('is-scrolling');
   if (!scrollMascotTimer) {
-    setMascotLine('哇！别滑太快，我扒不住床沿啦 ( >﹏< )！');
+    setMascotLine('哇！别滑太快，我的电脑桌要晃倒啦 ( >﹏< )！');
   }
   clearTimeout(scrollMascotTimer);
   scrollMascotTimer = setTimeout(() => {
