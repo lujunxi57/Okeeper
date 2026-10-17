@@ -392,7 +392,7 @@ dialog::backdrop{background:#1e2f1d38;backdrop-filter:blur(4px)}
 
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 
-/* Cyber Mascot: 2.5D Isometric Sleeping Human + Full-Body Chibi Codex + Circular Orb Minimize */
+/* Cyber Mascot: a sleeping owner and a grounded, three-quarter-view workstation. */
 .cyber-mascot{position:fixed;right:max(14px,calc((100vw - 1080px) / 2 - 188px));bottom:18px;z-index:8;display:flex;flex-direction:column;align-items:flex-end;pointer-events:none}
 .mascot-expanded{display:flex;flex-direction:column;align-items:flex-end;gap:6px;transform-origin:bottom right;transition:transform .32s cubic-bezier(.34,1.56,.64,1),opacity .22s}
 .cyber-mascot.is-minimized .mascot-expanded{display:none!important}
@@ -400,9 +400,48 @@ dialog::backdrop{background:#1e2f1d38;backdrop-filter:blur(4px)}
 .mascot-minimize:hover{background:#e3eedb;transform:scale(1.1)}
 .mascot-bubble{pointer-events:auto;position:relative;max-width:184px;padding:7px 11px;border-radius:12px 12px 4px 12px;background:#243b2b;color:#f3f7ef;font-size:11px;font-weight:500;line-height:1.45;box-shadow:0 6px 18px #1b2e2026;border:1px solid #3d6247;transform-origin:bottom right;transition:transform .28s cubic-bezier(.34,1.56,.64,1),opacity .22s}
 .mascot-bubble::after{content:"";position:absolute;bottom:-6px;right:28px;width:10px;height:10px;background:#243b2b;border-right:1px solid #3d6247;border-bottom:1px solid #3d6247;transform:rotate(45deg)}
-.mascot-stage{pointer-events:auto;width:198px;height:156px;cursor:pointer;user-select:none;filter:drop-shadow(0 10px 20px rgba(30,50,35,.15));transition:transform .25s cubic-bezier(.34,1.56,.64,1)}
+.mascot-stage{pointer-events:auto;width:198px;height:150px;cursor:pointer;user-select:none;filter:drop-shadow(0 7px 12px rgba(30,50,35,.09));transition:transform .25s cubic-bezier(.34,1.56,.64,1)}
 .mascot-stage:hover{transform:translateY(-3px) scale(1.02)}
 .mascot-svg{width:100%;height:100%;overflow:visible;fill:initial;stroke:none}
+.mascot-svg .owner-sleeping,.mascot-svg .owner-awake{transform-origin:45px 108px;transition:opacity .4s ease,transform .85s cubic-bezier(.4,0,.2,1)}
+.mascot-svg .owner-sleeping{opacity:1;transform:translate(0,0) rotate(0deg)}
+.mascot-svg .owner-awake{opacity:0;transform:translate(-4px,3px) rotate(-10deg) scaleX(.85);pointer-events:none}
+.mascot-svg .zzz-group{opacity:1;transition:opacity .25s ease}
+.mascot-svg .owner-quilt{transform-origin:78px 128px;transition:transform .9s cubic-bezier(.4,0,.2,1)}
+.cyber-mascot:is([data-owner-state="waking"],[data-owner-state="phone"]) .owner-sleeping{opacity:0;transform:translate(3px,2px) rotate(12deg) scaleX(.82)}
+.cyber-mascot:is([data-owner-state="waking"],[data-owner-state="phone"]) .owner-awake{opacity:1;transform:translate(0,0) rotate(0deg) scaleX(1)}
+.cyber-mascot:is([data-owner-state="waking"],[data-owner-state="phone"]) .zzz-group{opacity:0}
+.cyber-mascot:is([data-owner-state="waking"],[data-owner-state="phone"]) .owner-quilt{transform:translate(1px,-.5px) rotate(1deg)}
+.mascot-svg .owner-phone-pose{transition-delay:.12s}
+.cyber-mascot:not([data-owner-state="sleeping"]) .snot-bubble{visibility:hidden;animation:none;opacity:0}
+.cyber-mascot:is([data-owner-state="sleeping"],[data-owner-state="settling"]) .owner-awake *{animation-play-state:paused}
+.mascot-svg .owner-phone-glow{animation:phone-light 2.6s ease-in-out infinite}
+.cyber-mascot:is([data-owner-state="waking"],[data-owner-state="phone"]) .owner-phone-feed{animation:phone-feed 6.6s ease-in-out infinite}
+.cyber-mascot:is([data-owner-state="waking"],[data-owner-state="phone"]) .owner-phone-thumb{animation:phone-swipe 6.6s ease-in-out infinite}
+.cyber-mascot:is([data-owner-state="waking"],[data-owner-state="phone"]) .owner-swipe-forearm{animation:phone-reach 6.6s ease-in-out infinite}
+.mascot-svg .owner-happy-heart{transform-origin:94px 69px;animation:phone-heart 2.4s ease-in-out infinite}
+@keyframes phone-light{
+  0%,100%{opacity:.7}
+  50%{opacity:1}
+}
+@keyframes phone-feed{
+  0%,24%{transform:translateY(0)}
+  30%,57%{transform:translateY(-27.5px)}
+  63%,90%{transform:translateY(-55px)}
+  96%,100%{transform:translateY(-82.5px)}
+}
+@keyframes phone-swipe{
+  0%,24%,34%,57%,67%,90%,100%{transform:translate(0,0)}
+  30%,63%,96%{transform:translate(1.2px,-6.5px)}
+}
+@keyframes phone-reach{
+  0%,24%,34%,57%,67%,90%,100%{d:path("M 48 106 Q 62 116 76 102")}
+  30%,63%,96%{d:path("M 48 106 Q 61 111 77.2 95.5")}
+}
+@keyframes phone-heart{
+  0%,100%{transform:translateY(1px) scale(.9);opacity:.6}
+  50%{transform:translateY(-2px) scale(1.05);opacity:1}
+}
 .mascot-svg text.zzz{font-family:ui-monospace,SFMono-Regular,monospace;font-weight:800;fill:#557a4e;stroke:none;user-select:none}
 .mascot-svg .z1{font-size:11px;animation:zzz-float 3.2s ease-in-out infinite}
 .mascot-svg .z2{font-size:14px;animation:zzz-float 3.2s ease-in-out 1.05s infinite}
@@ -415,24 +454,25 @@ dialog::backdrop{background:#1e2f1d38;backdrop-filter:blur(4px)}
 .mascot-svg .quilt-group{transform-origin:78px 128px;animation:quilt-breathe 3.6s ease-in-out infinite}
 @keyframes quilt-breathe{
   0%,100%{transform:scale(1) translateY(0)}
-  50%{transform:scale(1.025,1.05) translateY(-2px)}
+  50%{transform:scale(1.012,1.02) translateY(-.5px)}
 }
-.mascot-svg .snot-bubble{transform-origin:56px 99px;animation:snot-inflate 3.6s ease-in-out infinite}
+.mascot-svg .snot-bubble{transform-origin:57px 100px;animation:snot-inflate 3.6s ease-in-out infinite}
 @keyframes snot-inflate{
-  0%,100%{transform:scale(.4);opacity:.65}
-  50%{transform:scale(1.24);opacity:.95}
+  0%,100%{transform:scale(.68);opacity:.75}
+  50%{transform:scale(1.18);opacity:.95}
 }
-.mascot-svg .codex-char{transform-origin:170px 144px;animation:codex-tiptoe 3.6s ease-in-out infinite}
-@keyframes codex-tiptoe{
-  0%,100%{transform:translateY(0) rotate(0deg)}
-  50%{transform:translateY(-2px) rotate(-1deg)}
+.mascot-svg .codex-char{transform-origin:170px 144px;animation:codex-breathe 3.6s ease-in-out infinite}
+.mascot-svg .codex-typing-arms{transform-origin:207px 145px;animation:codex-breathe 3.6s ease-in-out infinite}
+@keyframes codex-breathe{
+  0%,100%{transform:translateY(0)}
+  50%{transform:translateY(-.7px)}
 }
 .mascot-svg .codex-head-group{transform-origin:166px 94px;animation:codex-peek-nod 4.4s ease-in-out infinite}
 @keyframes codex-peek-nod{
   0%,100%{transform:translateY(0) rotate(0deg)}
-  35%{transform:translateY(2.5px) rotate(-3.5deg)}
-  62%{transform:translateY(5px) rotate(-6.5deg)}
-  68%{transform:translateY(-2px) rotate(2.5deg)}
+  35%{transform:translateY(.7px) rotate(-1deg)}
+  62%{transform:translateY(1.7px) rotate(-2.5deg)}
+  68%{transform:translateY(-.8px) rotate(1deg)}
   76%{transform:translateY(0) rotate(0deg)}
 }
 .mascot-svg .codex-eyes{transform-origin:166px 66px;animation:codex-blink 4.2s infinite}
@@ -450,16 +490,11 @@ dialog::backdrop{background:#1e2f1d38;backdrop-filter:blur(4px)}
   0%,100%{fill:#9be580;r:4.8px}
   50%{fill:#d7ffbf;r:5.6px}
 }
-.mascot-svg .type-paw-l{transform-origin:152px 106px;animation:paw-type .24s ease-in-out infinite alternate}
-.mascot-svg .type-paw-r{transform-origin:174px 106px;animation:paw-type .24s ease-in-out .12s infinite alternate}
+.mascot-svg .type-paw-l{transform-origin:196px 105px;animation:paw-type .32s ease-in-out infinite alternate}
+.mascot-svg .type-paw-r{transform-origin:219px 106px;animation:paw-type .32s ease-in-out .32s infinite alternate}
 @keyframes paw-type{
   0%{transform:translateY(0) rotate(0deg)}
-  100%{transform:translateY(-3.2px) rotate(4deg)}
-}
-.mascot-svg .holo-code{animation:holo-float 2.2s ease-in-out infinite}
-@keyframes holo-float{
-  0%,100%{transform:translateY(0);opacity:.92}
-  50%{transform:translateY(-3px);opacity:1}
+  100%{transform:translateY(-1.2px) rotate(1deg)}
 }
 .mascot-svg .steam{animation:steam-rise 2.4s ease-in-out infinite}
 .mascot-svg .steam.s2{animation-delay:1.2s}
@@ -470,16 +505,16 @@ dialog::backdrop{background:#1e2f1d38;backdrop-filter:blur(4px)}
 }
 .mascot-svg .codex-sweat{opacity:0;transform:translateY(4px);transition:opacity .2s,transform .25s}
 .cyber-mascot.is-startled .codex-sweat,.cyber-mascot.is-scrolling .codex-sweat{opacity:1;transform:translateY(-2px)}
-.cyber-mascot.is-startled .codex-char{animation:codex-panic .45s ease-in-out 2}
-.cyber-mascot.is-scrolling .codex-char{animation:codex-cling-scroll .38s ease-in-out infinite}
+.cyber-mascot.is-startled .codex-char,.cyber-mascot.is-startled .codex-typing-arms{animation:codex-panic .45s ease-in-out 2}
+.cyber-mascot.is-scrolling .codex-char,.cyber-mascot.is-scrolling .codex-typing-arms{animation:codex-cling-scroll .6s ease-in-out infinite}
 @keyframes codex-panic{
   0%,100%{transform:translateY(0) rotate(0deg)}
-  25%{transform:translateY(-8px) rotate(-4deg) scale(1.04)}
-  75%{transform:translateY(-5px) rotate(4deg) scale(1.04)}
+  25%{transform:translateY(-3px) rotate(-1.5deg)}
+  75%{transform:translateY(-2px) rotate(1.5deg)}
 }
 @keyframes codex-cling-scroll{
-  0%,100%{transform:translateY(2px) rotate(-2deg)}
-  50%{transform:translateY(-4px) rotate(3deg)}
+  0%,100%{transform:translateY(.5px) rotate(-.7deg)}
+  50%{transform:translateY(-1px) rotate(.7deg)}
 }
 
 /* Circular Orb Bubble when Minimized */

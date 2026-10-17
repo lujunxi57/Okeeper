@@ -1057,6 +1057,11 @@ const MASCOT_IDLE_LINES = [
   '困死本模型了…续一杯热气腾腾的电子美式 ( -_-)旦~',
   '定好闹钟死守工位，绝对不掉链子 (ง •̀_•́)ง'
 ];
+const MASCOT_PHONE_LINES = [
+  '主人刷手机笑得好开心，我还在这里敲 ok (；′⌒`)',
+  '醒了，但只醒来刷手机……好吧，我继续打工 (T_T)',
+  '手机的光照亮了主人，屏幕的光照亮了我的黑眼圈…'
+];
 const MASCOT_POKE_LINES = [
   '别戳我！！手在键盘上飞起，没摸鱼 (⊙_⊙)！',
   '清醒了清醒了！正在工位替你死守重置点 ✦',
@@ -1064,6 +1069,76 @@ const MASCOT_POKE_LINES = [
   '人在床上躺，Codex 在工位扛！(๑•̀ㅂ•́)و✧'
 ];
 let mascotIdx = 0, mascotPokeIdx = 0, mascotTimer = null, scrollMascotTimer = null;
+const OWNER_PHASES = [
+  { state: 'sleeping', duration: 24000 },
+  { state: 'waking', duration: 1100 },
+  { state: 'phone', duration: 19000 },
+  { state: 'settling', duration: 1100 }
+];
+let ownerPhase = 0, ownerTimer = null, ownerDeadline = 0, ownerRemaining = OWNER_PHASES[0].duration;
+
+function triggerOwnerPhone() {
+  const wrap = $('#cyber-mascot');
+  if (!wrap || reducedMotion.matches) return;
+  if (ownerTimer !== null) {
+    clearTimeout(ownerTimer);
+    ownerTimer = null;
+  }
+  if (ownerPhase === 0 || ownerPhase === 3) {
+    ownerPhase = 1;
+    wrap.dataset.ownerState = 'waking';
+    ownerRemaining = OWNER_PHASES[1].duration;
+    setMascotLine(MASCOT_PHONE_LINES[mascotPokeIdx % MASCOT_PHONE_LINES.length], 1200);
+    mascotPokeIdx++;
+  } else {
+    ownerPhase = 2;
+    wrap.dataset.ownerState = 'phone';
+    ownerRemaining = OWNER_PHASES[2].duration;
+    const line = MASCOT_POKE_LINES[mascotPokeIdx % MASCOT_POKE_LINES.length];
+    mascotPokeIdx++;
+    setMascotLine(line, 1200);
+  }
+  syncOwnerCycle();
+}
+
+// Count visible time so minimizing or switching tabs cannot skip the little story.
+function syncOwnerCycle() {
+  const wrap = $('#cyber-mascot');
+  if (!wrap) return;
+  if (document.hidden || wrap.classList.contains('is-minimized') || reducedMotion.matches) {
+    if (ownerTimer !== null) {
+      clearTimeout(ownerTimer);
+      ownerTimer = null;
+      ownerRemaining = Math.max(0, ownerDeadline - performance.now());
+    }
+    if (reducedMotion.matches) {
+      const wasAwake = ownerPhase !== 0;
+      ownerPhase = 0;
+      ownerRemaining = OWNER_PHASES[0].duration;
+      wrap.dataset.ownerState = 'sleeping';
+      if (wasAwake) setMascotLine(MASCOT_IDLE_LINES[0]);
+    }
+    return;
+  }
+  if (ownerTimer !== null) return;
+  ownerDeadline = performance.now() + ownerRemaining;
+  ownerTimer = setTimeout(() => {
+    ownerTimer = null;
+    ownerPhase = (ownerPhase + 1) % OWNER_PHASES.length;
+    const phase = OWNER_PHASES[ownerPhase];
+    wrap.dataset.ownerState = phase.state;
+    ownerRemaining = phase.duration;
+    if (!wrap.classList.contains('is-startled') && !wrap.classList.contains('is-scrolling')) {
+      if (phase.state === 'phone') setMascotLine(MASCOT_PHONE_LINES[0]);
+      if (phase.state === 'sleeping') setMascotLine(MASCOT_IDLE_LINES[0]);
+    }
+    syncOwnerCycle();
+  }, ownerRemaining);
+}
+document.addEventListener('visibilitychange', syncOwnerCycle);
+reducedMotion.addEventListener('change', syncOwnerCycle);
+syncOwnerCycle();
+
 function setMascotLine(text, holdMs = 0) {
   const bubble = $('#mascot-bubble'), wrap = $('#cyber-mascot');
   if (!bubble || !wrap) return;
@@ -1078,14 +1153,10 @@ function setMascotLine(text, holdMs = 0) {
   }
 }
 $('#mascot-stage')?.addEventListener('click', () => {
-  const line = MASCOT_POKE_LINES[mascotPokeIdx % MASCOT_POKE_LINES.length];
-  mascotPokeIdx++;
-  setMascotLine(line, 1200);
+  triggerOwnerPhone();
 });
 $('#mascot-bubble')?.addEventListener('click', () => {
-  const line = MASCOT_POKE_LINES[mascotPokeIdx % MASCOT_POKE_LINES.length];
-  mascotPokeIdx++;
-  setMascotLine(line, 1200);
+  triggerOwnerPhone();
 });
 $('#mascot-minimize')?.addEventListener('click', event => {
   event.stopPropagation();
@@ -1093,6 +1164,7 @@ $('#mascot-minimize')?.addEventListener('click', event => {
   if (!wrap || !orb) return;
   wrap.classList.add('is-minimized');
   orb.hidden = false;
+  syncOwnerCycle();
   if (!reducedMotion.matches && typeof Motion !== 'undefined' && Motion.animateMini) {
     Motion.animateMini(orb, { transform: ['scale(.5)', 'scale(1.08)', 'scale(1)'] }, { duration: .35 });
   }
@@ -1103,6 +1175,7 @@ $('#mascot-orb')?.addEventListener('click', event => {
   if (!wrap || !orb) return;
   orb.hidden = true;
   wrap.classList.remove('is-minimized');
+  syncOwnerCycle();
   if (exp && !reducedMotion.matches && typeof Motion !== 'undefined' && Motion.animateMini) {
     Motion.animateMini(exp, { transform: ['scale(.7) translateY(16px)', 'scale(1) translateY(0px)'] }, { type: Motion.spring, duration: .45, bounce: .22 });
   }
@@ -1123,8 +1196,9 @@ window.addEventListener('scroll', () => {
 setInterval(() => {
   const wrap = $('#cyber-mascot');
   if (document.hidden || !wrap || wrap.classList.contains('is-minimized') || wrap.classList.contains('is-startled') || wrap.classList.contains('is-scrolling')) return;
-  mascotIdx = (mascotIdx + 1) % MASCOT_IDLE_LINES.length;
-  setMascotLine(MASCOT_IDLE_LINES[mascotIdx]);
+  const lines = wrap.dataset.ownerState === 'waking' || wrap.dataset.ownerState === 'phone' ? MASCOT_PHONE_LINES : MASCOT_IDLE_LINES;
+  mascotIdx++;
+  setMascotLine(lines[mascotIdx % lines.length]);
 }, 8000);
 
 $('#intro-copy')?.addEventListener('click', () => {
