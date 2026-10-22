@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Okeeper 开源版本交互预览：本地定时、额度概览与自托管流程。全部为示例数据。">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; form-action 'none'; base-uri 'none'">
+<title>Okeeper · 开源版预览</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/style.css">
+<script src="/app.js" defer></script>
+</head>
+<body>
+<div id="okeeper-demo" lang="zh-CN">
+  <div class="ok-demo-bar"><span>产品概念演示 · 全部为示例数据</span><button type="button" class="ok-btn cursor-interaction" data-action="onboarding">体验首次设置</button></div>
+  <div class="ok-shell">
+    <header class="ok-top"><div class="ok-brand"><span class="ok-logo" aria-hidden="true">o</span><div><div class="ok-brand-name">Okeeper</div><div class="ok-brand-sub">按时发消息，随时看额度</div></div></div><div class="ok-loc" id="ok-location-label"></div></header>
+    <div class="ok-layout"><nav class="ok-sidebar" aria-label="主要导航"><button type="button" class="ok-nav cursor-interaction" data-page="home">我的安排</button><button type="button" class="ok-nav cursor-interaction" data-page="history">运行记录</button><button type="button" class="ok-nav cursor-interaction" data-page="location">运行位置</button><div class="ok-sidebar-note">自己的账号<br>自己的节奏<br><br>Okeeper · 开源方案</div></nav><main class="ok-content" id="ok-main"></main></div>
+    <div class="ok-lab"><label for="ok-scenario">演示场景<select id="ok-scenario"><option value="normal">正常运行</option><option value="sleep">本地电脑睡眠</option><option value="login">账号需要重新登录</option><option value="uncertain">请求回执未确认</option></select></label><span class="ok-muted" id="ok-demo-clock">演示时间：10 月 22 日 08:00</span></div>
+  </div>
+  <div class="ok-live" id="ok-live" role="status" aria-live="polite"></div>
+</div>
+<noscript>请启用 JavaScript 以体验交互演示。此页面使用示例数据，不连接真实账号。</noscript>
+</body>
+</html>

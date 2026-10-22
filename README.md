@@ -1,3 +1,8 @@
+> **开源版开发分支 `codex/open-source`**
+>
+> 当前新增的是产品方案与交互预览。运行预览请看 [preview/README.md](preview/README.md)，实施路线见 [开源产品化方案](docs/OPEN_SOURCE_PROPOSAL.md)。
+> 预览只使用示例数据；跨平台安装包和真实云端执行尚未交付。本分支从 main 的已提交版本建立，原自用工作区尚未提交的后端变更保留在原处，后续按需整合。下方保留已有 Linux 版本的说明。
+
 <p align="left">
   <img src="web/icon.png" width="76" height="76" alt="Okeeper Icon">
 </p>

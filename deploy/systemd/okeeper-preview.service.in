@@ -1,0 +1,14 @@
+[Unit]
+Description=Okeeper open-source product preview
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=@ROOT@
+ExecStart=@PYTHON@ -m http.server 18794 --bind @TAILSCALE_IP@ --directory @ROOT@/preview/public
+Restart=on-failure
+RestartSec=5
+UMask=0077
+
+[Install]
+WantedBy=default.target
