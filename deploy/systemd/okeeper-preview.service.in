@@ -1,13 +1,15 @@
 [Unit]
-Description=Okeeper open-source product preview
+Description=Okeeper open-source setup and account manager
 After=network-online.target
 
 [Service]
 Type=simple
 WorkingDirectory=@ROOT@
-ExecStart=@PYTHON@ -m http.server 18794 --bind @TAILSCALE_IP@ --directory @ROOT@/preview/public
+Environment="OKEEPER_CODEX_BIN=@CODEX_BIN@"
+ExecStart=@PYTHON@ @ROOT@/preview/server.py --bind @TAILSCALE_IP@ --port 18794
 Restart=on-failure
 RestartSec=5
+TimeoutStopSec=12
 UMask=0077
 
 [Install]

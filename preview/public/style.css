@@ -164,3 +164,66 @@ footer { color:#5b6b51; }
   .cyber-mascot .mascot-expanded { max-width:210px; }
 }
 @media(prefers-reduced-motion:reduce) { *, *::before, *::after { animation:none!important; transition:none!important; } }
+
+/* Setup and account management follow the same main palette and page rhythm. */
+.setup-welcome { max-width:720px; margin:42px auto 48px; }
+.setup-welcome-title { display:flex; gap:16px; align-items:center; margin-bottom:30px; }
+.setup-welcome-title>img { width:50px; height:50px; border-radius:13px; flex:none; }
+.setup-welcome h1 { font-size:28px; margin:0 0 6px; font-weight:700; line-height:1.4; }
+.setup-welcome-title p { margin:0; color:#5b6b51; font-size:13px; line-height:1.7; }
+.setup-section { margin:20px 0; padding:22px; border:1px solid #dbe2d2; border-radius:16px; background:#fafbf7; }
+.setup-section>.section-head { margin-bottom:16px; }
+.setup-section h2 { font-size:16px; }
+.setup-section h3 { margin:0; font-size:13px; font-weight:600; }
+.setup-section p { margin:4px 0 0; color:#5b6b51; font-size:12px; line-height:1.7; }
+.setup-check { display:flex; align-items:center; gap:12px; padding:15px 0; }
+.setup-check+.setup-check { border-top:1px solid #e3e8da; }
+.setup-check>div { min-width:0; flex:1; }
+.setup-check h3 { overflow-wrap:anywhere; }
+.setup-check>.ok-pill { margin-left:auto; }
+.setup-check-icon { width:32px; height:32px; border-radius:9px; display:grid; place-items:center; background:#e8efe2; color:var(--green); flex:none; }
+.setup-check-icon svg { width:18px; height:18px; }
+.setup-detected { padding-bottom:20px; border-bottom:1px solid #e3e8da; }
+.setup-detected .ok-btn { margin-top:14px; }
+.setup-detected .account-avatar { width:32px; height:32px; font-size:13px; }
+.setup-add-row { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:14px; margin-top:20px; }
+.setup-empty-login { padding:8px 0 16px; border-bottom:1px solid #e3e8da; }
+.setup-doc-link { display:inline-block; margin-top:16px; color:var(--green); font-size:12px; text-underline-offset:3px; }
+.setup-welcome-footer { display:flex; align-items:center; flex-wrap:wrap; gap:12px 20px; font-size:12px; color:#5b6b51; margin-top:24px; }
+.setup-manager { padding:28px 0 32px; }
+.setup-manager>.section-head h1 { font-size:26px; font-weight:650; margin:0; }
+.setup-account-list { display:flex; flex-direction:column; gap:12px; }
+.setup-account { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:14px; padding:18px 20px; background:#fff; border:1px solid #dde4d4; border-radius:14px; }
+.setup-account.is-selected { border-color:#8eab78; }
+.setup-account-main { display:flex; align-items:center; flex-wrap:wrap; gap:10px; min-width:0; }
+.setup-account-main>div { min-width:0; }
+.setup-account-main h3 { font-size:14px; overflow-wrap:anywhere; margin:0; font-weight:600; }
+.setup-account-main p { color:#5b6b51; font-size:11px; margin:4px 0 0; }
+.setup-account-actions { display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+.setup-remove { flex-basis:100%; padding:14px 0 0; border-top:1px solid #e3e8da; font-size:12px; color:#795e38; }
+.setup-remove p { margin:0 0 8px; line-height:1.7; }
+.setup-remove .ok-row { justify-content:flex-start; }
+.setup-login { display:flex; flex-wrap:wrap; align-items:center; gap:12px; margin:16px 0; padding:16px; background:#eaf0e2; border-radius:12px; }
+.setup-login>h3,.setup-login>p,.setup-login>.ok-row { flex-basis:100%; }
+.setup-code { font-family:ui-monospace,SFMono-Regular,Consolas,monospace; color:var(--green); font-size:26px; letter-spacing:.05em; overflow-wrap:anywhere; user-select:all; }
+.setup-login a { text-decoration:none; }
+.setup-spinner { display:inline-block; width:18px; height:18px; border:2px solid #cbd6be; border-top-color:var(--green); border-radius:50%; animation:quota-turn 1s linear infinite; flex:none; }
+@media(max-width:600px) {
+  .setup-welcome { margin:28px auto; }
+  .setup-welcome-title { align-items:flex-start; gap:12px; margin-bottom:22px; }
+  .setup-welcome-title>img { width:40px; height:40px; border-radius:10px; }
+  .setup-welcome h1 { font-size:23px; display:block; }
+  .setup-section { padding:17px 15px; }
+  .setup-check { flex-wrap:wrap; gap:10px; }
+  .setup-check>.ok-pill { margin-left:42px; }
+  .setup-check>div { min-width:0; flex-basis:calc(100% - 42px); }
+  .setup-account { padding:16px; }
+  .setup-account-actions { width:100%; justify-content:flex-start; }
+  .setup-account-main { gap:8px; }
+  .setup-account-main .quota-current { margin-left:32px; }
+  .setup-manager>.section-head h1 { font-size:23px; }
+  .setup-manager>.section-head { align-items:flex-start; }
+  .preview-nav { width:100%; justify-content:space-between; gap:0; }
+  .preview-nav button { padding:7px 8px; }
+  .setup-code { font-size:24px; }
+}
