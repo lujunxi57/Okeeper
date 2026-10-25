@@ -1,0 +1,9 @@
+**
+!preview/
+!preview/server.py
+!preview/public/
+!preview/public/**
+!deploy/
+!deploy/docker/
+!deploy/docker/Dockerfile.lab
+!deploy/docker/install_codex.py

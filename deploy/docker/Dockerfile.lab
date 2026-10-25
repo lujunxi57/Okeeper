@@ -1,0 +1,18 @@
+FROM python:3.12-slim-bookworm
+
+ARG CODEX_VERSION=0.164.0
+ARG INSTALL_CODEX=1
+COPY deploy/docker/install_codex.py /tmp/install_codex.py
+RUN if [ "$INSTALL_CODEX" = "1" ]; then python3 /tmp/install_codex.py "$CODEX_VERSION"; fi \
+    && rm /tmp/install_codex.py \
+    && useradd --create-home --uid 10001 --shell /bin/sh okeeper
+
+WORKDIR /app
+COPY --chown=okeeper:okeeper preview/server.py /app/preview/server.py
+COPY --chown=okeeper:okeeper preview/public/ /app/preview/public/
+USER okeeper
+ENV HOME=/home/okeeper \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+EXPOSE 18794
+ENTRYPOINT ["python3", "preview/server.py"]

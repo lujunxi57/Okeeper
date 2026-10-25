@@ -7,9 +7,9 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; form-action 'none'; base-uri 'none'">
 <title>Okeeper · 开源版预览</title>
 <link rel="icon" type="image/png" href="/icon.png">
-<link rel="stylesheet" href="/main-style.css?v=20261025-welcome">
-<link rel="stylesheet" href="/style.css?v=20261025-welcome">
-<script src="/app.js?v=20261025-welcome" defer></script>
+<link rel="stylesheet" href="/main-style.css?v=20261025-home-icon-mascot">
+<link rel="stylesheet" href="/style.css?v=20261025-home-icon-mascot">
+<script src="/app.js?v=20261025-home-icon-mascot" defer></script>
 </head>
 <body class="is-entry">
 <div id="okeeper-demo" class="shell entry-mode" lang="zh-CN">
@@ -25,10 +25,11 @@
   <footer><span>环境检测与账号管理已接入 · 定时任务仍为演示。</span><span>额度以账号服务返回为准</span></footer>
   <div class="ok-live" id="ok-live" role="status" aria-live="polite"></div>
 </div>
-  <aside id="cyber-mascot" class="cyber-mascot is-minimized" data-owner-state="sleeping" aria-label="赛博早八守夜吉祥物">
+  <a id="github-shortcut" class="github-link github-shortcut" href="https://github.com/lujunxi57/Okeeper/tree/codex/open-source" target="_blank" rel="noopener noreferrer" aria-label="GitHub" title="GitHub">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.09 3.29 9.4 7.86 10.92.58.1.79-.25.79-.56 0-.28-.01-1.02-.02-2-3.2.7-3.88-1.54-3.88-1.54-.52-1.33-1.28-1.68-1.28-1.68-1.05-.71.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.76 2.7 1.25 3.36.96.1-.75.4-1.25.73-1.54-2.55-.29-5.24-1.28-5.24-5.68 0-1.26.45-2.28 1.18-3.09-.12-.29-.51-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11.02 11.02 0 0 1 5.78 0c2.2-1.49 3.16-1.18 3.16-1.18.63 1.59.24 2.76.12 3.05.74.81 1.18 1.83 1.18 3.09 0 4.41-2.69 5.38-5.26 5.67.41.36.78 1.06.78 2.14 0 1.55-.01 2.79-.01 3.17 0 .31.21.67.8.56A11.51 11.51 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5Z"/></svg>
+        </a>
+  <aside id="cyber-mascot" class="cyber-mascot" data-owner-state="sleeping" aria-label="赛博早八守夜吉祥物">
     <div class="mascot-expanded">
-      <button id="mascot-minimize" class="mascot-minimize" type="button" aria-label="最小化为圆形气泡" title="最小化">−</button>
-      <div id="mascot-bubble" class="mascot-bubble" role="status">呜呜…主人睡得好香，我还要盯表发 ok (；′⌒`)</div>
       <div id="mascot-stage" class="mascot-stage" title="点击切换吉祥物动作" role="button" tabindex="0" aria-label="切换吉祥物动作">
         <svg class="mascot-svg" viewBox="0 0 252 190" aria-hidden="true">
           <defs>
@@ -87,8 +88,10 @@
               <path d="M 48 86 L 58 87 L 60 93 Q 55 98 48 92 Z" fill="#fde5cf" stroke="#263d2b" stroke-width="1.5" stroke-linejoin="round"/>
               <path d="M 46 92 Q 53 101 62 93 M 60 103 L 62 114" fill="none" stroke="#b7ab88" stroke-width="1.3" stroke-linecap="round"/>
               <path d="M 42 94 Q 46 92 49 97 L 52 101 L 43 105 L 39 99" fill="#eee3c8" stroke="#263d2b" stroke-width="1.7" stroke-linejoin="round"/>
+              <path d="M 64 93 Q 68 94 71 99 L 64 103 L 61 97" fill="#eee3c8" stroke="#263d2b" stroke-width="1.7" stroke-linejoin="round"/>
             </g>
             <g class="owner-awake owner-awake-head">
+              <g class="owner-awake-face" transform="rotate(9 52 86)">
               <path d="M 36 72 C 29 67 28 60 34 56 C 46 49 62 55 65 65 L 61 69 C 53 61 43 63 36 72 Z" fill="#5e8a50" stroke="#263d2b" stroke-width="1.8" stroke-linejoin="round"/>
               <circle cx="29" cy="65" r="3.2" fill="#f7faf2" stroke="#263d2b" stroke-width="1.6"/>
               <path d="M 37 71 C 37 62 51 59 59 65 Q 63 68 63 73 L 66 76 Q 67 78 64 79 C 63 87 58 91 50 90 C 40 89 34 81 36 74 Z" fill="#fde5cf" stroke="#263d2b" stroke-width="1.9" stroke-linejoin="round"/>
@@ -96,10 +99,15 @@
               <path d="M 35 69 Q 46 57 63 65 L 64 69 Q 46 62 37 74 Z" fill="#dce8d2" stroke="#263d2b" stroke-width="1.5" stroke-linejoin="round"/>
               <path d="M 38 76 C 33 72 31 78 35 81 Q 38 83 40 80" fill="#fde5cf" stroke="#263d2b" stroke-width="1.4" stroke-linecap="round"/>
               <path d="M 35.5 78 Q 38 76.5 37 80" fill="none" stroke="#c58e77" stroke-width="1" stroke-linecap="round"/>
-              <path d="M 46 76 Q 49 73 52 76 M 56 75 Q 58.5 72.5 61 75" fill="none" stroke="#344635" stroke-width="1.6" stroke-linecap="round"/>
+              <path d="M 45.5 73.5 Q 48.5 71.5 51 73 M 56 72.5 Q 58.5 71 61 73" fill="none" stroke="#344635" stroke-width="1.3" stroke-linecap="round"/>
+              <ellipse cx="49" cy="77" rx="2.6" ry="3" fill="#ffffff"/>
+              <ellipse cx="59" cy="76.5" rx="2.1" ry="2.7" fill="#ffffff"/>
+              <ellipse cx="50" cy="78" rx="1.4" ry="1.8" fill="#344635"/>
+              <ellipse cx="59.8" cy="77.4" rx="1.25" ry="1.6" fill="#344635"/>
               <ellipse cx="46" cy="81" rx="3" ry="1.6" fill="#eca597" opacity=".65"/>
               <path d="M 51 83 Q 56 86 60 82 Q 58 89 54 88 Q 52 87 51 83 Z" fill="#79493f" stroke="#344635" stroke-width="1.1" stroke-linejoin="round"/>
               <path d="M 54 87 Q 56 85.5 58 86.5" fill="none" stroke="#e9a0a0" stroke-width="1.4" stroke-linecap="round"/>
+              </g>
             </g>
             <!-- Breathing Quilt -->
             <g class="owner-quilt">
@@ -111,22 +119,38 @@
             </g>
             <g class="owner-awake owner-awake-quilt">
               <g class="quilt-group">
-                <path d="M 34 121 Q 38 115 44 114 Q 58 117 73 112 Q 91 109 104 113 L 129 121 L 129 130 L 60 152 L 60 143 L 34 127 Z" fill="#497551" stroke="#263d2b" stroke-width="2.2" stroke-linejoin="round"/>
-                <path d="M 34 121 Q 38 115 44 114 Q 58 117 73 112 Q 91 109 104 113 L 99 119 Q 85 115 74 119 Q 56 123 44 120 L 40 126 Z" fill="#dce8d2" stroke="#263d2b" stroke-width="1.8" stroke-linejoin="round"/>
-                <path d="M 56 129 Q 82 119 108 123 M 78 125 L 83 130" fill="none" stroke="#6c9973" stroke-width="1.7" stroke-linecap="round"/>
+                <!-- The waist leads into bent thighs and a raised knee beneath the quilt. -->
+                <path d="M 34 122 Q 39 116 44 116 Q 59 121 72 114 C 76 109 81 102 90 103 C 99 103 102 112 109 115 L 129 122 L 129 130 L 60 152 L 60 143 L 34 128 Z" fill="#497551" stroke="#263d2b" stroke-width="2.2" stroke-linejoin="round"/>
+                <path d="M 34 122 Q 39 116 44 116 Q 59 121 72 114 C 76 109 81 102 90 103 C 99 103 102 112 109 115 L 105 120 C 97 115 95 108 89 108 C 82 108 79 115 74 119 Q 57 126 45 122 L 40 127 Z" fill="#dce8d2" stroke="#263d2b" stroke-width="1.8" stroke-linejoin="round"/>
+                <path d="M 53 132 Q 65 125 75 124 M 82 121 Q 87 114 92 118 L 102 127" fill="none" stroke="#6c9973" stroke-width="1.7" stroke-linecap="round"/>
               </g>
             </g>
-            <!-- The far hand supports the phone; the near arm bends at the elbow. -->
+            <!-- The owner sees the screen; the viewer sees the back and separated grips. -->
             <g class="owner-awake owner-phone-pose">
-              <ellipse class="owner-phone-glow" cx="69" cy="84" rx="22" ry="22" fill="url(#owner-phone-light)"/>
-              <path d="M 66 98 L 71 107 Q 73 110 80 107" fill="none" stroke="#263d2b" stroke-width="7.2" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M 66 98 L 71 107 Q 73 110 80 107" fill="none" stroke="#fde5cf" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
-              <g class="owner-phone">
-                <g transform="matrix(.88 .22 -.09 .78 75 78)">
-                  <rect x="2.2" y="-.6" width="19" height="35" rx="3" fill="#3b4d8c" stroke="#263d2b" stroke-width="1.4"/>
-                  <rect class="owner-phone-front" width="19" height="35" rx="3" fill="#22382b" stroke="#263d2b" stroke-width="1.6"/>
-                  <path d="M 7 1.5 H 12" fill="none" stroke="#a7bfa5" stroke-width=".8" stroke-linecap="round"/>
-                  <g class="owner-phone-screen" transform="translate(1.8 3.5)">
+              <ellipse class="owner-phone-glow" cx="65" cy="88" rx="17" ry="19" fill="url(#owner-phone-light)"/>
+              <path d="M 67 100 L 71 108 Q 72 111 75 110 L 84 106" fill="none" stroke="#263d2b" stroke-width="7.2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M 67 100 L 71 108 Q 72 111 75 110 L 84 106" fill="none" stroke="#fde5cf" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <g class="owner-phone" transform="matrix(.72 .14 -.09 .72 76 83)">
+                <!-- The thin screen edge is on the left, facing the owner. -->
+                <path class="owner-phone-screen-edge" d="M 0 1 L -2.5 3.5 V 33 L 0 35 Z" fill="#bddfd0" stroke="#263d2b" stroke-width="1.3" stroke-linejoin="round"/>
+                <rect class="owner-phone-back" width="19" height="35" rx="3" fill="#7c9586" stroke="#263d2b" stroke-width="1.8"/>
+                <path d="M 16 4 V 30" fill="none" stroke="#acc7b4" stroke-width="1" stroke-linecap="round"/>
+                <rect x="3" y="3" width="5.5" height="9" rx="2" fill="#385743"/>
+                <circle cx="5.7" cy="5.8" r="1.4" fill="#c2dace" stroke="#263d2b" stroke-width=".7"/>
+                <circle cx="5.7" cy="9.3" r="1.3" fill="#c2dace" stroke="#263d2b" stroke-width=".7"/>
+                <circle cx="10.6" cy="5" r=".9" fill="#e7ebc8"/>
+              </g>
+              <path class="owner-phone-grip" d="M 83 106 Q 85 103 87 102 Q 89 102 89 104 Q 88 108 85 109 Q 82 110 82 108 Z" fill="#fde5cf" stroke="#263d2b" stroke-width="1.3" stroke-linejoin="round"/>
+              <path class="owner-swipe-forearm" d="M 46 102 L 50.5 113 Q 51.5 117 55.5 115.5 L 68.5 109.5" fill="none" stroke="#263d2b" stroke-width="7.2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path class="owner-swipe-forearm" d="M 46 102 L 50.5 113 Q 51.5 117 55.5 115.5 L 68.5 109.5" fill="none" stroke="#fde5cf" stroke-width="4.8" stroke-linecap="round" stroke-linejoin="round"/>
+              <g class="owner-phone-thumb">
+                <path d="M 68.5 109.5 Q 69.5 105 72.4 103.4 Q 74.2 102.4 74.8 104 Q 75.1 105.2 73.5 107 Q 74.3 108.8 72.8 110.2 Q 70.7 112.4 68.5 109.5 Z" fill="#fde5cf" stroke="#263d2b" stroke-width="1.3" stroke-linejoin="round"/>
+                <path d="M 71 108 Q 72 107 73 106" fill="none" stroke="#c58e77" stroke-width=".8" stroke-linecap="round"/>
+              </g>
+              <!-- A small cutaway bubble reveals the content of the inward-facing screen. -->
+              <g class="owner-phone-preview">
+                <path d="M 111 35 H 138 Q 143 35 143 40 V 90 Q 143 96 137 96 H 113 L 99 103 L 105 91 Q 106 90 106 88 V 40 Q 106 35 111 35 Z" fill="#f7faf2" stroke="#81977c" stroke-width="1.5" stroke-linejoin="round"/>
+                  <g class="owner-phone-preview-screen" transform="translate(110 39) scale(1.9)">
                     <g clip-path="url(#owner-phone-viewport)">
                       <!-- Full-height TikTok & Chat pages scroll up inside the phone screen viewport -->
                       <g class="owner-phone-feed">
@@ -175,16 +199,7 @@
                       </g>
                     </g>
                   </g>
-                  <path d="M 7.5 33 H 11.5" fill="none" stroke="#c2d7c0" stroke-width=".8" stroke-linecap="round"/>
-                </g>
-              </g>
-              <ellipse cx="80" cy="107" rx="3" ry="2.8" transform="rotate(14 80 107)" fill="#fde5cf" stroke="#263d2b" stroke-width="1.4"/>
-              <path class="owner-swipe-forearm" d="M 46 102 L 52.5 110 Q 54.5 114 58 112.5 L 78 103" fill="none" stroke="#263d2b" stroke-width="7.2" stroke-linecap="round" stroke-linejoin="round"/>
-              <path class="owner-swipe-forearm" d="M 46 102 L 52.5 110 Q 54.5 114 58 112.5 L 78 103" fill="none" stroke="#fde5cf" stroke-width="4.8" stroke-linecap="round" stroke-linejoin="round"/>
-              <g class="owner-phone-thumb">
-                <path d="M 78 103 Q 81 98 84.5 95.5" fill="none" stroke="#263d2b" stroke-width="4.8" stroke-linecap="round"/>
-                <path d="M 78 103 Q 81 98 84.5 95.5" fill="none" stroke="#fde5cf" stroke-width="2.6" stroke-linecap="round"/>
-                <ellipse class="owner-phone-fingertip" cx="84.5" cy="95.5" rx="1.8" ry="2.2" transform="rotate(20 84.5 95.5)" fill="#fde5cf" stroke="#263d2b" stroke-width="1.1"/>
+                <circle cx="95" cy="106" r="1.4" fill="#d8e5d1" stroke="#81977c" stroke-width="1"/>
               </g>
             </g>
           </g>
@@ -198,7 +213,7 @@
           <g class="owner-awake owner-happy-signs" fill="#80976a">
             <path class="owner-happy-heart" d="M 91 69 C 87 65 90 61 94 64 C 98 60 102 65 98 69 L 94 73 Z" fill="#d78f87"/>
             <path d="M 79 58 L 80.5 62 L 84 63.5 L 80.5 65 L 79 69 L 77.5 65 L 74 63.5 L 77.5 62 Z" fill="#b4bf79"/>
-            <text x="101" y="89" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12" font-weight="700">♪</text>
+            <text x="94" y="87" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12" font-weight="700">♪</text>
           </g>
 
           <!-- RIGHT: the desk and laptop share the same 1:3 oblique projection. -->
@@ -339,22 +354,6 @@
       </div>
     </div>
     <!-- Minimized Circular Bubble State -->
-    <button id="mascot-orb" class="mascot-orb" type="button" aria-label="展开赛博早八小人偶" title="点击展开守夜的 Codex">
-      <svg viewBox="0 0 48 48" aria-hidden="true">
-        <circle cx="24" cy="24" r="22" fill="#223b2a" stroke="#8ab876" stroke-width="2.5"/>
-        <circle cx="24" cy="7" r="3" fill="#9be580"/>
-        <rect x="11" y="13" width="26" height="22" rx="9" fill="#e9f3e1" stroke="#243d2b" stroke-width="1.8"/>
-        <rect x="14" y="16" width="20" height="16" rx="6" fill="#1c3525"/>
-        <circle cx="20" cy="24" r="2.8" fill="#b8f29c"/>
-        <circle cx="19.2" cy="23" r="1.1" fill="#fff"/>
-        <circle cx="28" cy="24" r="2.8" fill="#b8f29c"/>
-        <circle cx="27.2" cy="23" r="1.1" fill="#fff"/>
-        <path d="M 16.5 20.5 L 21.5 19.2 M 31.5 20.5 L 26.5 19.2" stroke="#b8f29c" stroke-width="1.5" stroke-linecap="round"/>
-        <path d="M 21.5 29 Q 24 27 26.5 29" fill="none" stroke="#b8f29c" stroke-width="1.5" stroke-linecap="round"/>
-        <path d="M 15.5 26 C 14 29 17 30 17 27 Z" fill="#7ad0f5"/>
-      </svg>
-      <span class="orb-ping" aria-hidden="true"></span>
-    </button>
   </aside>
 <noscript>请启用 JavaScript 以体验交互演示。此页面使用示例数据，不连接真实账号。</noscript>
 </body>

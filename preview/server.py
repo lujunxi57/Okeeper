@@ -356,8 +356,15 @@ ASSETS = {'/': ('index.html', 'text/html; charset=utf-8'), '/index.html': ('inde
     '/app.js': ('app.js', 'text/javascript; charset=utf-8'), '/icon.png': ('icon.png', 'image/png')}
 
 
-def make_handler(setup, bind, port):
+def make_handler(setup, bind, port, public_origin=None):
     allowed_hosts = {f'{bind}:{port}', f'127.0.0.1:{port}', f'localhost:{port}'}
+    if public_origin:
+        origin = urlsplit(public_origin)
+        allowed_hosts.add(origin.netloc)
+        if origin.hostname in ('127.0.0.1', 'localhost'):
+            mapped_port = origin.port or (443 if origin.scheme == 'https' else 80)
+            allowed_hosts.update({f'127.0.0.1:{mapped_port}', f'localhost:{mapped_port}'})
+    device = '当前容器' if bind == '0.0.0.0' else '本机' if bind in ('127.0.0.1', 'localhost') else '当前服务器'
 
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *args):
@@ -385,7 +392,7 @@ def make_handler(setup, bind, port):
                 path = urlsplit(self.path).path
                 if path == '/api/bootstrap':
                     self.reply(200, setup.accounts.snapshot() | {'environment': setup.environment(),
-                        'device': '本机' if bind in ('127.0.0.1', 'localhost') else '当前服务器', 'login': setup.login_status()})
+                        'device': device, 'login': setup.login_status()})
                 elif path == '/api/login':
                     self.reply(200, setup.login_status())
                 elif path in ASSETS:
@@ -415,7 +422,7 @@ def make_handler(setup, bind, port):
                 path = urlsplit(self.path).path
                 if self.command == 'POST' and path == '/api/configure' and not data:
                     self.reply(200, setup.accounts.snapshot() | {'environment': setup.configure(),
-                        'device': '本机' if bind in ('127.0.0.1', 'localhost') else '当前服务器', 'login': setup.login_status()})
+                        'device': device, 'login': setup.login_status()})
                 elif self.command == 'POST' and path == '/api/accounts/bind' and set(data) == {'candidate_id'}:
                     self.reply(200, setup.bind(data['candidate_id']))
                 elif self.command == 'POST' and path == '/api/accounts/select' and set(data) == {'account_id'}:
@@ -446,16 +453,28 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--bind', default='127.0.0.1')
     parser.add_argument('--port', type=int, default=18794)
+    parser.add_argument('--public-origin', help='Explicit browser origin when Docker maps the internal port')
     parser.add_argument('--state-dir', default=os.environ.get('OKEEPER_SETUP_STATE_DIR', str(Path.home() / '.local/state/okeeper-open-source')))
     args = parser.parse_args()
-    if args.bind not in ('127.0.0.1', 'localhost'):
+    if args.public_origin:
+        origin = urlsplit(args.public_origin)
+        try:
+            valid = origin.scheme in ('http', 'https') and origin.hostname and origin.port != 0 and not origin.username and not origin.password and origin.path in ('', '/') and not origin.query and not origin.fragment
+        except ValueError:
+            valid = False
+        if not valid:
+            parser.error('--public-origin must be an HTTP(S) origin without credentials or a path')
+    if args.bind == '0.0.0.0':
+        if not args.public_origin:
+            parser.error('容器监听需要通过 --public-origin 明确浏览器访问地址。')
+    elif args.bind not in ('127.0.0.1', 'localhost'):
         try:
             if ipaddress.ip_address(args.bind) not in ipaddress.ip_network('100.64.0.0/10'):
                 raise ValueError()
         except ValueError:
             parser.error('此单用户版本仅支持 localhost 或 Tailscale IPv4。')
     setup = Setup(Accounts(args.state_dir))
-    server = ThreadingHTTPServer((args.bind, args.port), make_handler(setup, args.bind, args.port))
+    server = ThreadingHTTPServer((args.bind, args.port), make_handler(setup, args.bind, args.port, args.public_origin))
     server.daemon_threads = True
     def stop(*_):
         raise SystemExit(0)

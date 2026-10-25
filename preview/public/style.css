@@ -221,7 +221,7 @@ footer { color:#5b6b51; }
 
 /* The entry uses the existing animated wordmark as the whole visual identity. */
 .entry-mode>.topbar, .entry-mode>footer { display:none; }
-.is-entry .cyber-mascot { display:none; }
+.is-entry>.cyber-mascot { display:none; }
 .welcome-entry { max-width:780px; margin:0 auto; min-height:100svh; display:flex; flex-direction:column; justify-content:center; padding:64px 0 26px; }
 .welcome-center { margin:auto 0; padding:48px 0; }
 .welcome-logo { width:fit-content; max-width:100%; }
@@ -285,3 +285,33 @@ footer { color:#5b6b51; }
 }
 @media(max-width:350px) { .welcome-entry { padding-left:4px; padding-right:4px; }.welcome-logo .welcome-slogan { font-size:14px; }.welcome-slogan .slogan-codex { font-size:14px; }.welcome-bottom { gap:8px; } }
 @media(prefers-reduced-motion:reduce) { .welcome-logo .title-char,.welcome-logo .title-dot { animation:none; }.welcome-logo:hover .title-char { transform:none; } }
+
+/* The character belongs to the welcome composition, not a floating utility. */
+.welcome-entry { max-width:1008px; }
+.welcome-center { display:grid; grid-template-columns:minmax(0,1fr) 320px; align-items:center; gap:32px; }
+.welcome-copy { min-width:0; }
+.welcome-eyebrow .welcome-brand-icon { display:block; width:24px; height:24px; border-radius:7px; object-fit:cover; flex:none; }
+.welcome-mascot { width:320px; min-width:0; }
+.welcome-mascot .cyber-mascot { display:block; position:relative; right:auto; bottom:auto; z-index:auto; width:100%; pointer-events:auto; }
+.welcome-mascot .mascot-expanded { display:block; transform:none; }
+.welcome-mascot .mascot-stage { width:100%; height:auto; aspect-ratio:252 / 190; filter:drop-shadow(0 12px 18px #263c2510); }
+.welcome-mascot .mascot-stage:hover { transform:translateY(-3px); }
+.welcome-mascot .mascot-stage:focus-visible { outline:2px solid var(--green); outline-offset:6px; border-radius:16px; }
+.github-shortcut { position:fixed; right:22px; bottom:22px; z-index:9; width:44px; height:44px; border-radius:12px; background:#f5f7ef; }
+.github-shortcut svg { width:21px; height:21px; }
+.page-hidden .mascot-svg * { animation-play-state:paused; }
+@media(max-width:1000px) and (min-width:601px) {
+  .welcome-center { grid-template-columns:minmax(0,1fr) 250px; gap:24px; }
+  .welcome-mascot { width:250px; }
+  .welcome-logo .welcome-title { font-size:clamp(58px,8.5vw,86px); }
+}
+@media(max-width:600px) {
+  .welcome-center { grid-template-columns:1fr; gap:18px; padding:18px 0; }
+  .welcome-copy { display:contents; }
+  .welcome-logo { grid-row:1; }
+  .welcome-mascot { grid-row:2; width:224px; justify-self:center; }
+  .welcome-actions { grid-row:3; margin-top:0; }
+  .github-shortcut { right:16px; bottom:16px; }
+  .welcome-bottom { padding-right:50px; }
+  footer { padding-right:56px; }
+}

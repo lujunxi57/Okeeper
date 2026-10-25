@@ -1,0 +1,40 @@
+name: okeeper-onboarding-lab
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: deploy/docker/Dockerfile.lab
+      args:
+        CODEX_VERSION: ${OKEEPER_LAB_CODEX_VERSION:-0.164.0}
+        INSTALL_CODEX: ${OKEEPER_LAB_INSTALL_CODEX:-1}
+    image: okeeper-onboarding-lab:local
+    init: true
+    command:
+      - --bind
+      - 0.0.0.0
+      - --port
+      - "18794"
+      - --public-origin
+      - http://${OKEEPER_LAB_BIND_IP:-127.0.0.1}:${OKEEPER_LAB_PORT:-18795}
+    ports:
+      - "${OKEEPER_LAB_BIND_IP:-127.0.0.1}:${OKEEPER_LAB_PORT:-18795}:18794"
+    volumes:
+      - lab-home:/home/okeeper
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,size=128m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:18794/', timeout=3).read()"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  lab-home:

@@ -485,11 +485,11 @@ dialog::backdrop{background:#1e2f1d38;backdrop-filter:blur(4px)}
 }
 @keyframes phone-swipe{
   0%,24%,34%,57%,67%,90%,100%{transform:translate(0,0)}
-  30%,63%,96%{transform:translate(.765px,-6.63px)}
+  30%,63%,96%{transform:translate(.3px,-2.2px)}
 }
 @keyframes phone-reach{
-  0%,24%,34%,57%,67%,90%,100%{d:path("M 46 102 L 52.5 110 Q 54.5 114 58 112.5 L 78 103")}
-  30%,63%,96%{d:path("M 46 102 L 52.5 110 Q 54.5 114 58 112.5 L 78.765 96.37")}
+  0%,24%,34%,57%,67%,90%,100%{d:path("M 46 102 L 50.5 113 Q 51.5 117 55.5 115.5 L 68.5 109.5")}
+  30%,63%,96%{d:path("M 46 102 L 50.5 113 Q 51.5 117 55.5 115.5 L 68.8 107.3")}
 }
 @keyframes phone-heart{
   0%,100%{transform:translateY(1px) scale(.9);opacity:.6}

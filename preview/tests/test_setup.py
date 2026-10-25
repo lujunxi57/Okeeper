@@ -187,6 +187,28 @@ class SetupTests(unittest.TestCase):
                 request(route)
             self.assertEqual(error.exception.code, 404)
 
+    def test_docker_public_origin_maps_external_port_and_loopback_alias(self):
+        server = ThreadingHTTPServer(('127.0.0.1', 0), app.make_handler(self.setup, '127.0.0.1', 0))
+        port = server.server_address[1]
+        server.RequestHandlerClass = app.make_handler(self.setup, '0.0.0.0', 18794, f'http://127.0.0.1:{port}')
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        self.addCleanup(server.server_close)
+        self.addCleanup(server.shutdown)
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        url = f'http://127.0.0.1:{port}'
+        request = urllib.request.Request(url + '/api/bootstrap', headers={'Host': f'localhost:{port}'})
+        with opener.open(request, timeout=3) as response:
+            self.assertEqual(json.load(response)['device'], '当前容器')
+        request = urllib.request.Request(url + '/api/configure', data=b'{}', method='POST', headers={
+            'Host': f'localhost:{port}', 'Origin': f'http://localhost:{port}',
+            'Content-Type': 'application/json', 'X-Okeeper-Request': '1'})
+        with opener.open(request, timeout=3) as response:
+            self.assertEqual(json.load(response)['environment']['connection']['status'], 'connected')
+        request = urllib.request.Request(url + '/', headers={'Host': 'untrusted.example:18795'})
+        with self.assertRaises(urllib.error.HTTPError) as error:
+            opener.open(request, timeout=3)
+        self.assertEqual(error.exception.code, 403)
+
 
 if __name__ == '__main__':
     unittest.main()
