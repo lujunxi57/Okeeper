@@ -9,8 +9,12 @@
   const locationName = () => state.location==='local' ? (setup.demo?'这台电脑':setup.device) : '我的云端（演示）';
   const esc = value => String(value).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const iconPaths = {"plus":"M10 4v12M4 10h12","clock":"M10 6v4.2l2.8 1.6","history":"M3 10a7 7 0 1 0 2.1-5L3 7M3 3v4h4m3-1v4l3 2","chevron":"m8 5 5 5-5 5","edit":"m12.5 3.5 4 4M3.5 16.5l1-4L13 4a2.1 2.1 0 0 1 3 3l-8.5 8.5-4 1Z","monitor":"M3 3.5h14v10H3zM10 13.5V17M6.5 17h7","cloud":"M5 15.5a3.5 3.5 0 0 1-.3-7A5.5 5.5 0 0 1 15.3 7a4.3 4.3 0 0 1 .2 8.5Z"};
+  Object.assign(iconPaths,{
+    settings:'M8 2h4l.6 2.1 1.9 1.1 2.1-.5 2 3.5-1.5 1.6v2.2l1.5 1.6-2 3.5-2.1-.5-1.9 1.1L12 20H8l-.6-2.3-1.9-1.1-2.1.5-2-3.5 1.5-1.6V9.8L1.4 8.2l2-3.5 2.1.5 1.9-1.1Z',
+    arrow:'M4 10h12m-5-5 5 5-5 5',back:'M16 10H4m5-5-5 5 5 5',connection:'M8 13l4-6M6 11l-1.5 2.5a3 3 0 0 0 5 3L11 14m-2-8 1.5-2.5a3 3 0 0 1 5 3L14 9'
+  });
   iconPaths.terminal="M3 5l4 5-4 5M10 15h7";
-  const icon = name => `<svg viewBox="0 0 20 20" aria-hidden="true">${name==='clock'?'<circle cx="10" cy="10" r="7.2"/>':''}<path d="${iconPaths[name]}"/></svg>`;
+  const icon = name => `<svg viewBox="0 0 20 20" aria-hidden="true">${name==='clock'?'<circle cx="10" cy="10" r="7.2"/>':name==='settings'?'<circle cx="10" cy="11" r="3"/>':''}<path d="${iconPaths[name]}"/></svg>`;
   const btn = (label,action,kind='',disabled=false) => `<button type="button" class="ok-btn ${kind} cursor-interaction" data-action="${action}" ${disabled?'disabled':''}>${action==='add'?icon('plus'):''}${label}</button>`;
   const minutesOf = value => Number(value.slice(0,2))*60+Number(value.slice(3));
   const clockAt = minutes => String(Math.floor((minutes%1440)/60)).padStart(2,'0')+':'+String(minutes%60).padStart(2,'0');
@@ -31,12 +35,13 @@
     const clock=task?.time||'00:00';
     const [hour,minute]=clock.split(':').map(Number);
     let html=`<section class="intro" aria-labelledby="title"><div class="intro-copy"><span class="eyebrow"><i class="eyebrow-pulse" aria-hidden="true"></i><span>OKEEPER</span></span><h1 id="title" aria-label="赛博早八."><span class="title-char" style="--i:0">赛</span><span class="title-char" style="--i:1">博</span><span class="title-char" style="--i:2">早</span><span class="title-char" style="--i:3">八</span><span class="title-dot">.</span></h1><p class="hero-slogan"><code class="slogan-codex">Codex</code><span class="slogan-text">，你这个年纪<em class="slogan-emphasis">怎么睡得着的？</em></span><span class="slogan-cursor" aria-hidden="true"></span></p></div><div class="intro-dashboard"><div class="tech-telemetry" aria-label="示例执行统计"><div class="telemetry-head"><span class="telemetry-title">累计触发统计 <span class="demo-caption">示例</span></span><div class="fixed-settings"><span>轻量消息</span><span class="setting-divider"></span><span class="message-badge">ok</span></div></div><div class="telemetry-grid"><div class="telemetry-item"><span class="telemetry-label">触发次数</span><div class="telemetry-value-row"><strong class="telemetry-number">${bound?'—':completed}</strong><span class="telemetry-unit">次</span></div></div><span class="telemetry-divider" aria-hidden="true"></span><div class="telemetry-item"><span class="telemetry-label">触发 Token</span><div class="telemetry-value-row"><strong class="telemetry-number">—</strong><span class="telemetry-unit">未调用模型</span></div></div></div></div><div class="next-panel"><div class="next-copy"><span class="next-label">下一次发送（演示）</span><div class="next-time">${task?esc(task.time):'—:—'}</div><span class="next-day">${task?'每天 · Asia/Taipei':'添加时间后，在这里见'}</span></div><div class="dial" aria-hidden="true"><div class="dial-dot d1"></div><div class="dial-dot d2"></div><div class="dial-dot d3"></div><div class="dial-dot d4"></div><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="48" class="dial-ring"/><g transform="rotate(${hour%12*30+minute*.5} 60 60)"><path d="M60 60V37" class="hour-hand"/></g><g transform="rotate(${minute*6} 60 60)"><path d="M60 60V24" class="minute-hand"/></g><circle cx="60" cy="60" r="3.7" class="dial-center"/></svg></div></div></div></section>`;
-    html+=`<section class="quota-panel" aria-labelledby="quota-title"><div class="quota-heading"><div class="quota-title-row"><h2 id="quota-title">账号额度与触发队列</h2><span class="quota-count">1</span><button type="button" class="request-history-button" data-page="history">${icon('history')}近期请求</button></div><div class="quota-tools"><span class="preview-updated">${bound?'额度尚未接入':state.scenario==='login'?'等待重新登录':'示例更新于 08:00'}</span>${btn('添加时间','add','ok-primary',running)}</div></div><div class="preview-runtime"><span class="preview-runtime-state"><i aria-hidden="true"></i>运行在${locationName()}</span><span>${state.location==='local'?'电脑睡眠或关机时无法按时执行':'本地电脑关机不影响云端任务'}</span><button class="runtime-change" type="button" data-page="location">更改运行位置${icon('chevron')}</button></div>${banner()}<section class="quota-row is-active-account" aria-label="账号与演示触发队列"><div class="account-lane-top"><div class="quota-person"><span class="account-avatar" aria-hidden="true">${esc(bound?.email[0].toUpperCase()||'P')}</span><span class="quota-email">${esc(currentAccount()?.email||'personal@example.com')}</span><span class="quota-current">${currentAccount()?'已绑定':'个人账号'}</span><span class="quota-route-badge">${locationName()}</span></div></div><div class="quota-windows">`;
+    if(!setup.demo&&state.location==='local'&&!bound)return html+`<section class="quota-panel" aria-labelledby="quota-title"><div class="quota-heading"><div class="quota-title-row"><h2 id="quota-title">账号额度与触发队列</h2></div><span class="connection"><i aria-hidden="true"></i>Codex 已连接</span></div><div class="workspace-account-empty"><span class="setup-check-icon">${icon('plus')}</span><h3>环境已就绪，接下来由你安排。</h3><p>还没有检测到 Codex 登录。你可以添加账号查看额度，也可以稍后再添加。</p><button type="button" class="ok-btn ok-primary" data-page="accounts">添加 Codex 账号</button></div></section>`;
+    html+=`<section class="quota-panel" aria-labelledby="quota-title"><div class="quota-heading"><div class="quota-title-row"><h2 id="quota-title">账号额度与触发队列</h2><span class="quota-count">1</span><button type="button" class="request-history-button" data-page="history">${icon('history')}近期请求</button></div><div class="quota-tools"><span class="preview-updated">${bound?'额度尚未接入':state.scenario==='login'?'等待重新登录':'示例更新于 08:00'}</span>${btn('添加时间','add','ok-primary',running)}</div></div><div class="preview-runtime"><span class="preview-runtime-state"><i aria-hidden="true"></i>运行在${locationName()}</span><span>${state.location==='local'?'电脑睡眠或关机时无法按时执行':'本地电脑关机不影响云端任务'}</span><button class="runtime-change" type="button" data-page="location">更改运行位置${icon('chevron')}</button></div>${banner()}<section class="quota-row is-active-account" aria-label="账号与演示触发队列"><div class="account-lane-top"><div class="quota-person"><span class="account-avatar" aria-hidden="true">${esc(bound?.email[0].toUpperCase()||'P')}</span><span class="quota-email">${esc(currentAccount()?.email||'personal@example.com')}</span><span class="quota-current">${bound?(isManaged(bound)?'已添加':'当前登录 · 未添加'):'个人账号'}</span><span class="quota-route-badge">${locationName()}</span></div>${bound&&!isManaged(bound)?setupButton('添加此账号','bind-detected'):bound?'<button type="button" class="lane-action-btn" data-page="accounts">管理账号</button>':''}</div><div class="quota-windows">`;
     for(const [label,percent,extra] of [['短期剩余',72,'12:30 重置'],['本周剩余',84,'10 月 26 日重置']]) html+=`<div class="quota-window"><div class="quota-window-heading"><span>${label}</span><strong class="quota-amount">${bound||state.scenario==='login'?'—':percent+'%'}</strong><span class="quota-reset">${bound?'尚未读取额度':state.scenario==='login'?'当前不可用':'示例 · '+extra}</span></div><div class="ok-meter" role="meter" aria-label="${label}（示例）" aria-valuemin="0" aria-valuemax="100" ${bound||state.scenario==='login'?'aria-valuetext="当前不可用"':`aria-valuenow="${percent}"`}><span style="width:${bound||state.scenario==='login'?0:percent}%"></span></div></div>`;
     html+=`</div><div class="account-queue"><div class="account-queue-head"><div class="account-queue-title">${icon('clock')}<span>触发队列</span><span class="queue-sub-count">${data().tasks.length} 个时点</span></div><div class="queue-actions">${btn(running?'模拟执行中…':'试运行（演示）','run','ok-secondary',running||blocked||!task)}</div></div><div class="alarm-grid account-queue-grid">`;
     for(const t of data().tasks) html+=`<article class="alarm-card ok-task ${t.enabled?'':'paused'} ${task?.id===t.id?'is-next':''}">${task?.id===t.id?'<span class="preview-next-tag">下一次</span>':''}<div class="card-top"><span class="card-kicker">每天</span><button class="edit-button" type="button" data-edit="${t.id}" ${running?'disabled':''}>${icon('edit')}<span>修改</span></button></div><div class="card-body-row"><div class="alarm-time ok-task-time">${esc(t.time)}</div></div><div class="preview-catchup">${t.catchup?'错过后 2 小时内补发一次':'错过后跳过本次'}</div><div class="card-bottom"><span class="alarm-status">${t.enabled?'等待发送':'已暂停'}</span><label class="ok-switch"><input type="checkbox" role="switch" aria-label="${esc(t.time)} 的定时消息" data-toggle="${t.id}" ${t.enabled?'checked':''} ${running?'disabled':''}></label></div></article>`;
     html+=`</div>${data().tasks.length?'':'<div class="queue-empty">该账号暂无触发时点</div>'}</div></section><p class="preview-account-note">本演示不会调用模型。正式版试运行会使用一次模型调用；发送消息不代表额度已重置。</p></section>`;
-    html+=`<section class="preview-device-section"><div class="section-head"><div><h2>运行位置<span class="count">${state.location==='local'?'本机':'云端'}</span></h2><p>先在自己的电脑上用起来，需要全天运行时再连接常开设备。</p></div><button type="button" class="add-button" data-page="location">${icon('monitor')}管理运行位置</button></div><div class="preview-device-row"><span class="preview-device-icon">${icon(state.location==='local'?'monitor':'cloud')}</span><div><h3>${locationName()}</h3><p>${state.location==='local'?'无需服务器 · 登录后即可设置定时消息':'独立登录与任务 · 关闭本地电脑不影响执行'}</p></div><span class="quota-current">示例连接</span></div></section>`;
+    html+=`<section class="preview-device-section"><div class="section-head"><div><h2>运行位置<span class="count">${state.location==='local'?'本机':'云端'}</span></h2><p>先在自己的电脑上用起来，需要全天运行时再连接常开设备。</p></div><button type="button" class="add-button" data-page="location">${icon('monitor')}管理运行位置</button></div><div class="preview-device-row"><span class="preview-device-icon">${icon(state.location==='local'?'monitor':'cloud')}</span><div><h3>${locationName()}</h3><p>${state.location==='local'?'无需服务器 · 登录后即可设置定时消息':'独立登录与任务 · 关闭本地电脑不影响执行'}</p></div><span class="quota-current">${setup.demo||state.location==='remote'?'示例连接':'Codex 已连接'}</span></div></section>`;
     return html;
   }
   function history() {
@@ -52,9 +57,10 @@
     const task=state.editing==='new'?{time:'13:30',catchup:true}:data().tasks.find(t=>t.id===state.editing);
     return `<h1>${state.editing==='new'?'添加一个时间。':'调整这次安排。'}</h1><p class="ok-subline">运行在${locationName()} · 个人账号 · 每日发送一次「ok」</p><form id="ok-task-form" class="ok-form"><div class="ok-form-row"><label class="ok-field">每天几点<input name="time" type="time" value="${esc(task.time)}" required></label><div class="ok-field"><span>任务时区</span><div class="ok-card" style="padding:9px 11px">Asia/Taipei · UTC+8</div></div></div><label class="ok-check"><input name="catchup" type="checkbox" ${task.catchup?'checked':''}><span>错过后 2 小时内补发一次<br><small class="ok-muted">只补发最近一次确认未发送的轻量消息。</small></span></label><p class="ok-subline">本原型固定演示时区。正式版默认使用系统时区，并可为每个任务调整。</p><p id="ok-form-error" class="ok-error" role="alert"></p><div class="ok-row"><div style="display:flex;gap:10px;flex-wrap:wrap"><button type="button" data-save-form class="ok-btn ok-primary cursor-interaction">保存安排</button>${btn('取消','cancel')}</div>${state.editing!=='new'?btn('删除这条安排','delete','ok-quiet'):''}</div></form>`;
   }
-  const setup={loading:true,error:'',environment:null,accounts:[],selected:null,device:'运行设备',view:'welcome',demo:false,busy:false,login:{status:'idle'},removeId:null};
+  const setup={loading:false,error:'',environment:null,accounts:[],selected:null,device:'运行设备',view:'welcome',demo:false,busy:false,login:{status:'idle'},removeId:null};
   let loginPoll, setupRequest=0;
-  const currentAccount=()=>setup.demo?null:setup.accounts.find(a=>a.id===setup.selected);
+  const currentAccount=()=>setup.demo||state.location==='remote'?null:(setup.accounts.find(a=>a.id===setup.selected)||setup.environment?.candidate);
+  const isManaged=account=>Boolean(account&&setup.accounts.some(a=>a.id===account.id));
   const waitingLogin=()=>['starting','waiting'].includes(setup.login.status);
   async function api(path,method='GET',data) {
     const response=await fetch(path,{method,cache:'no-store',headers:method==='GET'?{}:{'Content-Type':'application/json','X-Okeeper-Request':'1'},body:method==='GET'?undefined:JSON.stringify(data||{})});
@@ -90,7 +96,7 @@
       if(action==='setup-refresh'){await refreshSetup();}
       if(action==='bind-detected'){
         const result=await api('/api/accounts/bind','POST',{candidate_id:setup.environment.candidate.id});
-        Object.assign(setup,{accounts:result.accounts,selected:result.selected,demo:false,view:'workspace'});state.page='accounts';
+        Object.assign(setup,{accounts:result.accounts,selected:result.selected,demo:false,view:'workspace'});state.page=state.page==='accounts'?'accounts':'home';
         notify(result.already_bound?'已更新此账号的登录记录，没有重复添加。':'账号已绑定。你可以继续添加账号，或进入工作台。');
       }
       if(action==='login-start'){setup.login=await api('/api/login','POST');scheduleLoginPoll();}
@@ -100,7 +106,7 @@
       }
       if(action==='account-remove-confirm'){
         const result=await api('/api/accounts/'+id,'DELETE');Object.assign(setup,result);setup.removeId=null;
-        if(!setup.accounts.length){setup.view='welcome';setup.demo=false;}
+        if(!setup.accounts.length){setup.view='workspace';setup.demo=false;}
         notify('已移除 Okeeper 绑定和保存的登录副本。');
       }
     } catch(error){setup.error=error.message;}
@@ -126,25 +132,61 @@
     if(candidate)return `<section class="setup-detected"><div class="setup-check"><span class="account-avatar" aria-hidden="true">${esc(candidate.email[0].toUpperCase())}</span><div><h3>${esc(candidate.email)}</h3><p>检测到${esc(setup.device)}已有的 Codex 登录记录。</p></div><span class="ok-pill">${bound?'已绑定':'可绑定'}</span></div><p class="ok-subline">确认后将此账号添加到 Okeeper。检测到登录记录不代表已验证额度或模型调用。</p>${bound?'<button type="button" class="ok-btn ok-primary" data-page="accounts">查看已绑定账号</button>':setupButton(setup.accounts.length?'绑定检测到的账号':'绑定为第一个账号','bind-detected','ok-primary')}</section>`;
     return `<div class="setup-empty-login"><h3>还没有可绑定的登录记录</h3><p>${esc(env.login_note||'可以在下方登录你的 Codex 账号。')}</p></div>`;
   }
-  function startScreen() {
-    return `<section class="setup-welcome"><div class="setup-welcome-title"><img src="/icon.png" alt=""><div><h1>从连接第一个账号开始。</h1><p>先确认运行环境，再把 Codex 账号交给 Okeeper 管理。</p></div></div>${setupErrors()}<section class="setup-section"><div class="section-head"><h2>运行环境</h2>${setupButton(setup.busy?'检测中…':'重新检测','setup-refresh')}</div>${environmentRows()}</section><section class="setup-section"><div class="section-head"><h2>${setup.accounts.length?'添加 Codex 账号':'绑定第一个 Codex 账号'}</h2></div>${detectedAccount()}${loginPanel()}<div class="setup-add-row"><div><h3>登录另一个账号</h3><p>在官方页面完成授权，无需复制登录文件。</p></div>${setupButton('登录并添加账号','login-start')}</div>${!setup.environment?.codex_installed&&!setup.loading?'<a class="setup-doc-link" href="https://learn.chatgpt.com/docs/quickstart" target="_blank" rel="noopener noreferrer">查看 Codex 官方安装说明</a>':''}</section><div class="setup-welcome-footer">${setup.accounts.length?'<button type="button" class="ok-btn ok-primary" data-setup="enter-workspace">进入工作台</button>':'<button type="button" class="ok-btn ok-quiet" data-setup="explore-demo">先看看演示</button>'}<span>账号管理保存实际绑定；定时执行仍在开发中。</span></div></section>`;
+  function welcomeScreen() {
+    return `<section class="welcome-entry" aria-labelledby="welcome-title"><div class="welcome-center"><div class="welcome-logo intro-copy"><span class="eyebrow welcome-eyebrow"><i class="eyebrow-pulse" aria-hidden="true"></i><span>OKEEPER</span></span><h1 id="welcome-title" class="welcome-title" aria-label="赛博早八."><span class="title-char" style="--i:0">赛</span><span class="title-char" style="--i:1">博</span><span class="title-char" style="--i:2">早</span><span class="title-char" style="--i:3">八</span><span class="title-dot">.</span></h1><p class="hero-slogan welcome-slogan"><code class="slogan-codex">Codex</code><span class="slogan-text">，你这个年纪<em class="slogan-emphasis">怎么睡得着的？</em></span><span class="slogan-cursor" aria-hidden="true"></span></p></div><div class="welcome-actions"><button type="button" class="welcome-config" data-setup="configure">${icon('settings')}<span>开始配置</span>${icon('arrow')}</button><p>检测 Codex 环境，进入你的额度工作台。</p></div></div><div class="welcome-bottom"><span>Codex 的定时与额度助手</span><a href="https://github.com/lujunxi57/Okeeper/tree/codex/open-source" target="_blank" rel="noopener noreferrer">开源项目 ${icon('arrow')}</a></div></section>`;
+  }
+  function configurationScreen() {
+    const env=setup.environment;
+    let checks;
+    if(setup.loading){
+      checks=['识别运行系统','查找 Codex 安装','检查 Codex 连接'].map(label=>`<div class="setup-check"><span class="setup-spinner" aria-hidden="true"></span><div><h3>${label}</h3></div><span class="config-check-state">检测中</span></div>`).join('');
+    }else if(env){
+      const connected=env.connection?.status==='connected';
+      checks=environmentRows()+`<div class="setup-check"><span class="setup-check-icon">${icon('connection')}</span><div><h3>${connected?'Codex 连接正常':'Codex 尚未连接'}</h3><p>${connected?'已建立连接并读取运行状态。':esc(env.connection?.error||'安装 Codex 后，即可检查连接。')}</p></div><span class="ok-pill ${connected?'':'warn'}">${connected?'可连接':'需要处理'}</span></div>`;
+    }else{
+      checks='<p class="ok-subline">还未取得检测结果。请确认 Okeeper 服务正在运行后重试。</p>';
+    }
+    return `<section class="configuration-page"><button type="button" class="configuration-back" data-setup="go-welcome" ${setup.busy?'disabled':''}>${icon('back')}返回欢迎页</button><div class="configuration-heading"><h1>${setup.loading?'正在检查运行环境':'检查运行环境'}</h1><p>确认 Codex 已安装且可以连接后，自动进入额度工作台。</p></div><section class="configuration-checks" aria-label="配置检测结果" aria-busy="${setup.loading}">${checks}</section>${setup.error?`<p class="configuration-error" role="alert">${esc(setup.error)}</p>`:''}${!setup.loading&&env&&!env.codex_installed?'<a class="setup-doc-link" href="https://learn.chatgpt.com/docs/quickstart" target="_blank" rel="noopener noreferrer">查看 Codex 官方安装说明</a>':''}<div class="configuration-actions">${setupButton(setup.loading?'正在检测…':'重新检测并连接','configure','ok-primary')}<span class="ok-subline" role="status">${setup.loading?'正在确认运行设备的环境，请稍候。':'添加和管理账号可在工作台中完成。'}</span></div></section>`;
+  }
+  async function configureWorkspace() {
+    if(setup.busy)return;
+    setup.view='configure';setup.loading=true;setup.busy=true;setup.error='';setup.environment=null;notice='';clearTimeout(noticeTimer);render();
+    try {
+      const value=await api('/api/configure','POST');
+      Object.assign(setup,{environment:value.environment,accounts:value.accounts,selected:value.selected,device:value.device,login:value.login,demo:false});
+      if(!value.environment.codex_installed){
+        setup.error='还没有找到可用的 Codex。请先安装，再点击重新检测。';
+      }else if(value.environment.connection?.status!=='connected'){
+        setup.error=value.environment.connection?.error||'暂时无法连接 Codex，请检查后重试。';
+      }else{
+        setup.view='workspace';state.page='home';state.location='local';state.editing=null;scheduleLoginPoll();
+      }
+    }catch(error){setup.error=error.message;}
+    finally{
+      setup.loading=false;setup.busy=false;render();
+      const heading=main.querySelector('h1');
+      if(heading){if(!heading.id)heading.id='workspace-heading';main.setAttribute('aria-labelledby',heading.id);main.tabIndex=-1;main.focus({preventScroll:true});}
+    }
   }
   function accountManager() {
-    return `<section class="setup-manager"><div class="section-head"><div><h1>管理 Codex 账号</h1><p>账号保存在${esc(setup.device)}，可在这里添加和移除。</p></div><button type="button" class="ok-btn ok-primary" data-setup="enter-workspace">进入工作台</button></div>${setupErrors()}<div class="setup-account-list">${setup.accounts.length?setup.accounts.map(a=>`<article class="setup-account ${a.id===setup.selected?'is-selected':''}"><div class="setup-account-main"><span class="account-avatar" aria-hidden="true">${esc(a.email[0].toUpperCase())}</span><div><h3>${esc(a.email)}</h3><p>${a.source==='official_login'?'通过官方页面登录':'从设备已有登录记录绑定'}${a.plan?' · '+esc(a.plan):''}</p></div>${a.id===setup.selected?'<span class="quota-current">工作台账号</span>':''}</div><div class="setup-account-actions">${a.id===setup.selected?'':setupButton('在工作台查看','account-select','',a.id)}${setupButton('移除账号','account-remove','ok-quiet',a.id)}</div>${setup.removeId===a.id?`<div class="setup-remove"><p>从 Okeeper 移除 ${esc(a.email)}？</p><p>会删除这里的绑定和登录副本；原 Codex 登录及聊天记录保留。${setup.accounts.length===1?'这是最后一个账号，移除后会返回开始页。':''}</p><div class="ok-row">${setupButton('确认移除','account-remove-confirm','',a.id)}${setupButton('保留账号','account-remove-cancel')}</div></div>`:''}</article>`).join(''):'<div class="ok-empty">尚未绑定 Codex 账号，可使用下面检测到的账号，或登录一个新账号。</div>'}</div><section class="setup-section"><div class="section-head"><h2>添加账号</h2>${setupButton('重新检测','setup-refresh')}</div>${detectedAccount()}${loginPanel()}<div class="setup-add-row"><div><h3>添加其他 Codex 账号</h3><p>使用独立登录环境，已有账号保持原样。</p></div>${setupButton('登录并添加账号','login-start','ok-primary')}</div></section><p class="ok-subline">绑定后可管理登录记录；实际额度和定时执行将在后续接入。</p></section>`;
+    return `<section class="setup-manager"><div class="section-head"><div><h1>管理 Codex 账号</h1><p>账号保存在${esc(setup.device)}，可在这里添加和移除。</p></div><button type="button" class="ok-btn ok-primary" data-setup="enter-workspace">进入工作台</button></div>${setupErrors()}<div class="setup-account-list">${setup.accounts.length?setup.accounts.map(a=>`<article class="setup-account ${a.id===setup.selected?'is-selected':''}"><div class="setup-account-main"><span class="account-avatar" aria-hidden="true">${esc(a.email[0].toUpperCase())}</span><div><h3>${esc(a.email)}</h3><p>${a.source==='official_login'?'通过官方页面登录':'从设备已有登录记录绑定'}${a.plan?' · '+esc(a.plan):''}</p></div>${a.id===setup.selected?'<span class="quota-current">工作台账号</span>':''}</div><div class="setup-account-actions">${a.id===setup.selected?'':setupButton('在工作台查看','account-select','',a.id)}${setupButton('移除账号','account-remove','ok-quiet',a.id)}</div>${setup.removeId===a.id?`<div class="setup-remove"><p>从 Okeeper 移除 ${esc(a.email)}？</p><p>会删除这里的绑定和登录副本；原 Codex 登录及聊天记录保留。${setup.accounts.length===1?'移除后仍可浏览工作台，稍后再添加账号。':''}</p><div class="ok-row">${setupButton('确认移除','account-remove-confirm','',a.id)}${setupButton('保留账号','account-remove-cancel')}</div></div>`:''}</article>`).join(''):'<div class="ok-empty">尚未绑定 Codex 账号，可使用下面检测到的账号，或登录一个新账号。</div>'}</div><section class="setup-section"><div class="section-head"><h2>添加账号</h2>${setupButton('重新检测','setup-refresh')}</div>${detectedAccount()}${loginPanel()}<div class="setup-add-row"><div><h3>添加其他 Codex 账号</h3><p>使用独立登录环境，已有账号保持原样。</p></div>${setupButton('登录并添加账号','login-start','ok-primary')}</div></section><p class="ok-subline">绑定后可管理登录记录；实际额度和定时执行将在后续接入。</p></section>`;
   }
   function render() {
-    root.classList.toggle('setup-start',setup.view==='welcome'||setup.loading);
-    root.querySelector('.preview-toolbar').hidden=setup.view==='welcome'||setup.loading;
-    root.querySelector('.ok-lab').hidden=setup.view==='welcome'||setup.loading||state.page==='accounts';
+    const entry=setup.view==='welcome'||setup.view==='configure';
+    root.classList.toggle('setup-start',entry);
+    root.classList.toggle('entry-mode',entry);
+    document.body.classList.toggle('is-entry',entry);
+    root.querySelector('.preview-toolbar').hidden=entry;
+    root.querySelector('.ok-lab').hidden=entry||state.page==='accounts';
     root.querySelector('.preview-label').textContent=setup.demo?'开源版预览 · 示例数据':'账号管理已接入 · 任务演示';
     root.querySelector('#ok-location-label').innerHTML=`<i aria-hidden="true"></i><span style="white-space:nowrap">${setup.demo?(state.location==='local'?'本机':'云端'):esc(setup.device)} · ${setup.demo?'示例连接':'账号设置'}</span>`;
     root.querySelectorAll('[data-page]').forEach(el=>{el.setAttribute('aria-current',setup.view==='workspace'&&state.editing===null&&el.dataset.page===state.page?'page':'false');});
     root.querySelector('#ok-scenario').value=state.scenario;
     root.querySelector('#ok-scenario').disabled=running;
     root.querySelector('#ok-demo-clock').textContent=`演示时间：10 月 22 日 ${state.clock}`;
-    const welcome=setup.view==='welcome'||setup.loading;
-    main.className=welcome||state.page==='accounts'?'':state.editing!==null?'preview-editor':state.page==='home'?'':'preview-subpage';
-    main.innerHTML=welcome?startScreen():state.page==='accounts'?accountManager():state.editing!==null?editor():state.page==='home'?home():state.page==='history'?history():state.page==='connect'?connectPage():locationPage();
+    const welcome=setup.view==='welcome';
+    main.className=entry||state.page==='accounts'?'':state.editing!==null?'preview-editor':state.page==='home'?'':'preview-subpage';
+    main.innerHTML=welcome?welcomeScreen():setup.view==='configure'?configurationScreen():state.page==='accounts'?accountManager():state.editing!==null?editor():state.page==='home'?home():state.page==='history'?history():state.page==='connect'?connectPage():locationPage();
     root.querySelector('#ok-live').textContent=notice;
     root.querySelector('#ok-live').hidden=!notice;
   }
@@ -167,8 +209,9 @@
     const control=event.target.closest('[data-setup]');
     if(control&&!control.disabled){
       const action=control.dataset.setup,id=control.dataset.accountId;
-      if(action==='explore-demo'){setup.demo=true;setup.view='workspace';state.page='home';render();return;}
-      if(action==='enter-workspace'){setup.view='workspace';state.page=setup.accounts.length?'home':'accounts';setup.demo=false;render();return;}
+      if(action==='configure'){configureWorkspace();return;}
+      if(action==='go-welcome'){setup.view='welcome';setup.error='';notice='';clearTimeout(noticeTimer);render();return;}
+      if(action==='enter-workspace'){setup.view='workspace';state.page='home';setup.demo=false;render();return;}
       if(action==='account-remove'){setup.removeId=id;render();return;}
       if(action==='account-remove-cancel'){setup.removeId=null;render();return;}
       setupAction(action,id);return;
@@ -183,7 +226,7 @@
     const button=event.target.closest('[data-action]');
     if(!button||button.disabled)return;
     switch(button.dataset.action){
-      case 'onboarding':setup.view='welcome';refreshSetup().then(render);break;
+      case 'onboarding':setup.view='welcome';setup.error='';notice='';clearTimeout(noticeTimer);render();break;
       case 'run':runDemo();return;
       case 'add':state.editing='new';break;
       case 'cancel':state.editing=null;break;
@@ -233,5 +276,5 @@
   stage.addEventListener('click',pose);
   stage.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();pose();}});
   render();
-  refreshSetup().then(()=>{if(setup.accounts.length){setup.view='workspace';state.page='home';}render();});
+  document.addEventListener('visibilitychange',()=>document.body.classList.toggle('page-hidden',document.hidden));
 })();

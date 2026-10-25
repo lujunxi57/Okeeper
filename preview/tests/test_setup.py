@@ -7,6 +7,7 @@ import tempfile
 import threading
 import time
 import unittest
+from unittest.mock import patch
 import urllib.error
 import urllib.request
 from http.server import ThreadingHTTPServer
@@ -78,6 +79,42 @@ class SetupTests(unittest.TestCase):
         self.assertIsNone(self.setup.environment()['candidate'])
         (self.source / 'saved.json').rename(self.native)
 
+    def test_configure_checks_rpc_without_binding_login_or_model_call(self):
+        log = self.root / 'protocol.log'
+        with patch.dict(os.environ, {'OKEEPER_TEST_PROTOCOL_LOG': str(log)}):
+            result = self.setup.configure()
+        self.assertTrue(result['codex_installed'])
+        self.assertEqual(result['connection']['status'], 'connected')
+        self.assertEqual(result['candidate']['email'], 'first@example.com')
+        self.assertFalse(result['inference_verified'])
+        self.assertEqual(log.read_text().splitlines(), ['initialize', 'initialized', 'account/read'])
+        self.assertEqual(self.accounts.snapshot(), {'accounts': [], 'selected': None})
+        self.assertEqual(list(self.accounts.state.glob('connection-*')), [])
+
+    def test_configure_connects_without_a_native_login(self):
+        self.native.rename(self.source / 'saved.json')
+        try:
+            result = self.setup.configure()
+            self.assertEqual(result['connection']['status'], 'connected')
+            self.assertIsNone(result['candidate'])
+            self.assertFalse(self.accounts.snapshot()['accounts'])
+        finally:
+            (self.source / 'saved.json').rename(self.native)
+
+    def test_configure_distinguishes_missing_codex_and_connection_failure(self):
+        missing = app.Setup(self.accounts, self.source, str(self.root / 'missing-codex'))
+        result = missing.configure()
+        self.assertFalse(result['codex_installed'])
+        self.assertEqual(result['connection']['status'], 'not_available')
+        broken = self.root / 'broken-codex'
+        broken.write_text('#!/usr/bin/env python3\nimport sys\nif "--version" in sys.argv: print("codex-cli broken fixture")\nelse: sys.exit(1)\n')
+        broken.chmod(0o755)
+        result = app.Setup(self.accounts, self.source, str(broken)).configure()
+        self.assertTrue(result['codex_installed'])
+        self.assertEqual(result['connection']['status'], 'failed')
+        self.assertIn('连接', result['connection']['error'])
+        self.assertFalse(self.accounts.snapshot()['accounts'])
+
     def test_native_login_completion_and_cancel(self):
         signal = self.root / 'authorize'
         os.environ['OKEEPER_TEST_LOGIN_SIGNAL'] = str(signal)
@@ -135,6 +172,14 @@ class SetupTests(unittest.TestCase):
         with self.assertRaises(urllib.error.HTTPError):
             request('/api/accounts/bind', 'POST', {'candidate_id': candidate}, {'Content-Type': 'application/json', 'X-Okeeper-Request': '1', 'Origin': 'https://elsewhere.example'})
         headers = {'Content-Type': 'application/json', 'X-Okeeper-Request': '1'}
+        with self.assertRaises(urllib.error.HTTPError) as error:
+            request('/api/configure', 'POST', {})
+        self.assertEqual(error.exception.code, 403)
+        with request('/api/configure', 'POST', {}, headers) as response:
+            configured = json.load(response)
+            self.assertEqual(configured['environment']['connection']['status'], 'connected')
+            self.assertEqual(configured['accounts'], [])
+            self.assertNotIn('refresh_token', json.dumps(configured))
         with request('/api/accounts/bind', 'POST', {'candidate_id': candidate}, headers) as response:
             self.assertEqual(response.status, 200)
         for route in ('/accounts.sqlite', '/.git/config', '/server.py', '/../accounts.sqlite'):

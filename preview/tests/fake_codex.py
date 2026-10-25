@@ -21,7 +21,7 @@ if __name__ == '__main__':
         print('codex-cli fixture')
         raise SystemExit()
     home = Path(os.environ['CODEX_HOME'])
-    signal = Path(os.environ['OKEEPER_TEST_LOGIN_SIGNAL'])
+    signal = Path(os.environ.get('OKEEPER_TEST_LOGIN_SIGNAL', str(home / 'test-authorize')))
     output_lock = threading.Lock()
 
     def send(value):
@@ -37,6 +37,9 @@ if __name__ == '__main__':
     for line in sys.stdin:
         request = json.loads(line)
         method = request.get('method')
+        if os.environ.get('OKEEPER_TEST_PROTOCOL_LOG'):
+            with open(os.environ['OKEEPER_TEST_PROTOCOL_LOG'], 'a') as log:
+                log.write(method + '\n')
         if method == 'initialize':
             send({'id': request['id'], 'result': {'userAgent': 'fixture'}})
         elif method == 'account/login/start':
@@ -45,4 +48,5 @@ if __name__ == '__main__':
                 'verificationUrl': 'https://auth.openai.com/codex/device', 'userCode': 'TEST-1234'}})
             threading.Thread(target=complete, daemon=True).start()
         elif method == 'account/read':
-            send({'id': request['id'], 'result': {'account': {'type': 'chatgpt', 'email': 'added@example.com'}}})
+            account = {'type': 'chatgpt', 'email': 'added@example.com'} if (home / 'auth.json').exists() else None
+            send({'id': request['id'], 'result': {'account': account}})

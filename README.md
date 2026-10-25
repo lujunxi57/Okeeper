@@ -1,6 +1,6 @@
 > **开源版开发分支 `codex/open-source`**
 >
-> 当前已接入开始页环境检测、首个 Codex 账号确认绑定及账号增删管理；额度与定时执行仍为演示。运行预览请看 [preview/README.md](preview/README.md)，实施路线见 [开源产品化方案](docs/OPEN_SOURCE_PROPOSAL.md)。
+> 当前采用动态品牌欢迎页，点击配置后检查 Codex 环境与连接并进入额度工作台，账号添加和增删管理由用户选择；额度与定时执行仍为演示。运行预览请看 [preview/README.md](preview/README.md)，实施路线见 [开源产品化方案](docs/OPEN_SOURCE_PROPOSAL.md)。
 > 账号管理保存实际绑定，定时任务使用示例数据；跨平台安装包和真实云端执行尚未交付。本分支从 main 的已提交版本建立，原自用工作区尚未提交的后端变更保留在原处，后续按需整合。下方保留已有 Linux 版本的说明。
 
 <p align="left">

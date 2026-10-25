@@ -129,7 +129,7 @@ class Accounts:
 
 class NativeClient:
     """An isolated stdio process, never a connection to the user's running daemon."""
-    def __init__(self, binary, home):
+    def __init__(self, binary, home, initialize_timeout=10):
         flags = {'creationflags': subprocess.CREATE_NO_WINDOW} if os.name == 'nt' else {}
         self.process = subprocess.Popen([binary, 'app-server', '--stdio', '-c', 'cli_auth_credentials_store="file"',
             '-c', 'model_provider="openai"', '-c', 'approval_policy="never"', '-c', 'sandbox_mode="read-only"'],
@@ -141,7 +141,7 @@ class NativeClient:
         self.seq = 0
         threading.Thread(target=self._read, daemon=True).start()
         try:
-            self.call('initialize', {'clientInfo': {'name': 'okeeper_setup', 'title': 'Okeeper account setup', 'version': '0.1'}})
+            self.call('initialize', {'clientInfo': {'name': 'okeeper_setup', 'title': 'Okeeper account setup', 'version': '0.1'}}, timeout=initialize_timeout)
             self.send({'method': 'initialized'})
         except Exception:
             self.close()
@@ -199,16 +199,24 @@ class Setup:
     def __init__(self, accounts, source_home=None, binary=None):
         self.accounts = accounts
         self.source_home = Path(source_home or os.environ.get('OKEEPER_SOURCE_CODEX_HOME') or os.environ.get('CODEX_HOME') or Path.home() / '.codex')
-        self.binary = binary or os.environ.get('OKEEPER_CODEX_BIN') or shutil.which('codex')
+        self.binary_setting = binary or os.environ.get('OKEEPER_CODEX_BIN')
+        self.binary = self.binary_setting or shutil.which('codex')
         self.login_lock = threading.RLock()
         self.login = None
         self.client = None
         self.cancelled = None
         self.worker = None
+        self.connection_lock = threading.Lock()
+        self.connection = {'status': 'not_checked'}
+        self.version = None
+        self._probe_version()
+
+    def _probe_version(self):
+        self.binary = self.binary_setting or shutil.which('codex')
         self.version = None
         if self.binary:
             try:
-                with tempfile.TemporaryDirectory(dir=accounts.state, prefix='probe-') as home:
+                with tempfile.TemporaryDirectory(dir=self.accounts.state, prefix='probe-') as home:
                     result = subprocess.run([self.binary, '--version'], capture_output=True, text=True,
                         timeout=5, env=child_env(home), cwd=home)
                 self.version = result.stdout.strip() if result.returncode == 0 else None
@@ -225,7 +233,29 @@ class Setup:
         return {'system': platform.system(), 'architecture': platform.machine(),
             'codex_installed': bool(self.binary and self.version), 'codex_version': self.version,
             'candidate': candidate, 'login_note': issue, 'detection': 'local_login_record',
-            'inference_verified': False}
+            'connection': dict(self.connection), 'inference_verified': False}
+
+    def configure(self):
+        """Verify local Codex RPC in a fresh Home; never logs in or starts a turn."""
+        with self.connection_lock:
+            self._probe_version()
+            self.connection = {'status': 'not_available'}
+            if self.binary and self.version:
+                client = None
+                try:
+                    with tempfile.TemporaryDirectory(dir=self.accounts.state, prefix='connection-') as home:
+                        try:
+                            client = NativeClient(self.binary, home)
+                            result = client.call('account/read', {'refreshToken': False}, timeout=5)
+                            if not isinstance(result, dict) or 'account' not in result:
+                                raise Problem('Codex 未返回可识别的连接状态。')
+                            self.connection = {'status': 'connected', 'transport': 'stdio', 'checked_at': int(time.time())}
+                        finally:
+                            if client:
+                                client.close()
+                except (Problem, OSError, ValueError, queue.Empty, subprocess.TimeoutExpired):
+                    self.connection = {'status': 'failed', 'error': '已找到 Codex，但暂时无法建立连接。请检查 Codex 是否能正常启动，然后重试。'}
+            return self.environment()
 
     def bind(self, expected_id):
         auth, record = read_auth(self.source_home / 'auth.json')
@@ -383,7 +413,10 @@ def make_handler(setup, bind, port):
                 if not isinstance(data, dict):
                     raise Problem('请求内容无效。')
                 path = urlsplit(self.path).path
-                if self.command == 'POST' and path == '/api/accounts/bind' and set(data) == {'candidate_id'}:
+                if self.command == 'POST' and path == '/api/configure' and not data:
+                    self.reply(200, setup.accounts.snapshot() | {'environment': setup.configure(),
+                        'device': '本机' if bind in ('127.0.0.1', 'localhost') else '当前服务器', 'login': setup.login_status()})
+                elif self.command == 'POST' and path == '/api/accounts/bind' and set(data) == {'candidate_id'}:
                     self.reply(200, setup.bind(data['candidate_id']))
                 elif self.command == 'POST' and path == '/api/accounts/select' and set(data) == {'account_id'}:
                     self.reply(200, setup.accounts.select(data['account_id']))
