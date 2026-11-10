@@ -11,8 +11,11 @@ import sys
 import time
 import uuid
 from zoneinfo import ZoneInfo
+from websockets.exceptions import ConnectionClosed
 from rpc import RPC
-from schedule_store import enabled_times, claim_alarm, finish_alarm
+from schedule_store import enabled_times, claim_alarm, finish_alarm, connect
+from request_history import main_account_name
+from turn_result import SendMissed, TurnError, read_turn, terminal_error, completed_messages
 
 from settings import WORKDIR
 from settings import STATE
@@ -101,6 +104,8 @@ def create_chat(rpc, title):
     return thread
 
 DEFAULT_OK_TOKENS = 14824
+OBSERVE_SECONDS = 180
+HISTORY_POLL_SECONDS = 5
 
 def extract_turn_tokens(path_str, turn_id):
     if not path_str:
@@ -125,6 +130,12 @@ def extract_turn_tokens(path_str, turn_id):
 def run_turn(rpc, thread, key, scheduled):
     rpc.events.clear()
     sent = now()
+    # This is the final gate before submission. Never apply this window to an
+    # accepted turn: closing its isolated server would interrupt actual work.
+    if not 0 <= (sent - scheduled).total_seconds() <= MAX_LATE:
+        raise SendMissed('发送前已超过触发准备时限，本次未发送')
+    log('send_started', slot=key, thread=thread, scheduled=scheduled.isoformat(),
+        delay_seconds=(sent - scheduled).total_seconds())
     result = rpc.call('turn/start', {
         'threadId': thread,
         'input': [{'type': 'text', 'text': 'ok', 'text_elements': []}],
@@ -132,12 +143,16 @@ def run_turn(rpc, thread, key, scheduled):
         'clientUserMessageId': str(uuid.uuid5(uuid.NAMESPACE_URL, thread + key)),
     })
     turn = result['turn']['id']
-    log('accepted', slot=key, thread=thread, turn_id=turn, text='ok')
+    log('accepted', slot=key, thread=thread, turn_id=turn, text='ok',
+        delay_seconds=(now() - scheduled).total_seconds())
     seen = {'started': False, 'user': False, 'final': False, 'completed': False}
     live_tokens = None
-    deadline = time.monotonic() + 180
+    deadline = time.monotonic() + OBSERVE_SECONDS
+    next_poll = time.monotonic() + HISTORY_POLL_SECONDS
+    force_poll = False
+    history_completed = False
     def consume(msg):
-        nonlocal live_tokens
+        nonlocal live_tokens, force_poll
         method = msg.get('method')
         p = msg.get('params', {})
         if p.get('threadId') != thread:
@@ -148,10 +163,9 @@ def run_turn(rpc, thread, key, scheduled):
                 live_tokens = last_u['totalTokens']
         if method == 'turn/started' and p.get('turn', {}).get('id') == turn:
             delay = (now() - scheduled).total_seconds()
-            if delay > MAX_LATE:
-                raise RuntimeError('turn started past delivery deadline')
             seen['started'] = True
-            log('turn_started', slot=key, thread=thread, turn_id=turn, delay_seconds=delay)
+            log('turn_started', slot=key, thread=thread, turn_id=turn,
+                delay_seconds=delay, late=delay > MAX_LATE)
         if method == 'item/completed' and p.get('turnId') == turn:
             item = p.get('item', {})
             if item.get('type') == 'userMessage':
@@ -163,27 +177,56 @@ def run_turn(rpc, thread, key, scheduled):
                 seen['final'] = True
                 log('assistant_final', slot=key, thread=thread, turn_id=turn, text=item.get('text'))
         if method == 'turn/completed' and p.get('turn', {}).get('id') == turn:
-            if p['turn']['status'] != 'completed':
-                raise RuntimeError('turn ended: ' + p['turn']['status'])
-            seen['completed'] = True
-    for msg in rpc.events:
-        consume(msg)
-    while not seen['completed']:
+            code = terminal_error(p['turn'])
+            if code:
+                raise TurnError(code, turn)
+            if p['turn']['status'] == 'completed':
+                seen['completed'] = True
+                force_poll = True
+
+    while True:
+        # History calls can queue more live events; drain them on the next pass.
+        pending = list(rpc.events)
+        rpc.events.clear()
+        for msg in pending:
+            consume(msg)
+        if force_poll or time.monotonic() >= min(next_poll, deadline):
+            force_poll = False
+            try:
+                data, stored = read_turn(rpc, thread, turn)
+                history_completed = bool(stored and stored.get('status') == 'completed')
+                finals = completed_messages(stored)
+                if finals:
+                    break
+            except TurnError:
+                raise
+            except Exception as error:
+                # A failed metadata read is not proof that the accepted turn failed.
+                log('turn_history_unavailable', slot=key, thread=thread,
+                    turn_id=turn, error_type=type(error).__name__)
+            next_poll = time.monotonic() + HISTORY_POLL_SECONDS
         remaining = deadline - time.monotonic()
         if remaining <= 0:
-            raise TimeoutError('turn completion deadline exceeded')
-        consume(rpc.recv(remaining))
-    if not all(seen.values()):
-        raise RuntimeError('missing live event evidence: ' + str(seen))
-    data = rpc.call('thread/read', {'threadId': thread, 'includeTurns': True})['thread']
-    matched = [t for t in data.get('turns', []) if t['id'] == turn]
-    if data['id'] != thread or not matched or matched[0]['status'] != 'completed':
-        raise RuntimeError('completed turn missing from same-thread history')
-    items = matched[0].get('items', [])
-    users = [i for i in items if i.get('type') == 'userMessage']
-    finals = [i for i in items if i.get('type') == 'agentMessage' and i.get('phase') != 'commentary']
-    if not any(len(i.get('content', [])) == 1 and i['content'][0].get('text') == 'ok' for i in users) or not finals:
-        raise RuntimeError('messages missing from persisted history')
+            raise TurnError('verification_failed' if history_completed or seen['completed']
+                            else 'observation_timeout', turn)
+        try:
+            consume(rpc.recv(min(remaining, max(0, next_poll - time.monotonic()))))
+        except TimeoutError:
+            force_poll = True
+        except (OSError, ConnectionError, ConnectionClosed) as error:
+            # The final read may still prove completion. It never starts a turn.
+            try:
+                data, stored = read_turn(rpc, thread, turn)
+                finals = completed_messages(stored)
+                if finals:
+                    break
+            except TurnError:
+                raise
+            except Exception:
+                pass
+            raise TurnError('observation_disconnected', turn) from error
+    log('turn_history_verified', slot=key, thread=thread, turn_id=turn,
+        live_events=seen, completed_at=now().isoformat())
     tokens = extract_turn_tokens(data.get('path'), turn) or live_tokens or DEFAULT_OK_TOKENS
     return {'thread': thread, 'turn_id': turn, 'scheduled': scheduled.isoformat(),
             'sent': sent.isoformat(), 'completed': now().isoformat(),
@@ -214,7 +257,7 @@ def main():
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except BlockingIOError:
         log('skipped_locked', slot=key); lock.close(); return
-    db = sqlite3.connect(STATE / 'runs.sqlite')
+    db = connect(STATE)
     db.execute('CREATE TABLE IF NOT EXISTS runs (slot TEXT PRIMARY KEY, status TEXT, turn_id TEXT, at TEXT, tokens INTEGER)')
     if 'tokens' not in {r[1] for r in db.execute('PRAGMA table_info(runs)')}:
         db.execute('ALTER TABLE runs ADD COLUMN tokens INTEGER')
@@ -269,10 +312,19 @@ def main():
                     status('skipped_busy'); return
         if (now() - scheduled).total_seconds() > MAX_LATE:
             status('skipped_missed'); return
+        account_name = main_account_name(rpc)
+        from account_preferences import runtime_enabled
+        if not runtime_enabled(rpc,STATE):
+            status('skipped_disabled');return
+        if (now() - scheduled).total_seconds() > MAX_LATE:
+            status('skipped_missed'); return
         if mode == 'daily':
             claimed_alarm = claim_alarm(STATE, scheduled)
             if not claimed_alarm:
                 status('skipped_disabled'); return
+        db.execute('UPDATE runs SET account_name=?,thread_id=? WHERE slot=?', (account_name, thread, key))
+        db.commit()
+        status('sending')
         proof = run_turn(rpc, thread, key, scheduled)
         status('verified_completed', proof['turn_id'], proof.get('tokens', DEFAULT_OK_TOKENS))
         finish_alarm(STATE, claimed_alarm, 'completed')
@@ -280,9 +332,12 @@ def main():
             save_json('daily-chat-test-passed.json', proof)
         elif mode == 'test-reuse':
             save_json('daily-chat-reuse-test-passed.json', proof)
+    except SendMissed:
+        status('skipped_missed')
+        finish_alarm(STATE, claimed_alarm, 'skipped_missed')
     except Exception as e:
         finish_alarm(STATE, claimed_alarm, 'failed')
-        status('failed_or_uncertain')
+        status('failed_or_uncertain', getattr(e, 'turn_id', None))
         log('error', slot=key, thread=thread, error=str(e))
         raise
     finally:

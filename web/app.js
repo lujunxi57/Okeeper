@@ -1,11 +1,142 @@
 'use strict';
 const $ = selector => document.querySelector(selector);
+const disabledAccounts = new Set();
+let managedAccounts = [], managementBusy = false, managementPoll = null, loginState = { status: 'idle' }, completedLogin = null;
+let workspace = null, workspaceLoading = false, sessionCreating = false, sessionCreateRequest = null, workspaceVersion = 0;
+function newRequestId() {
+  return crypto.randomUUID?.() || 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const n = crypto.getRandomValues(new Uint8Array(1))[0] & 15; return (c === 'x' ? n : (n & 3) | 8).toString(16);
+  });
+}
 let snapshot = null, clockOffset = 0, loadingMutation = false, toastTimer, undoAction, editingAlarm = null, renderedOnce = false;
 const dialog = $('#add-dialog'), grid = $('#alarms'), customGrid = $('#custom-alarms');
 const threadDialog = $('#thread-dialog');
 let selectedThread = null, sessions = [], sessionLoading = false, sessionError = '', accountChoice = '', availableAccounts = [], sessionsLoadedOnce = false;
 let availableModels = [], customModelChoice = '', customEffortChoice = '';
+let customAccountChoice = '';
 let lastStats = null, telemetryRaf = null, telemetryDeltaTimer = null, lastFastPoll = 0;
+const manualRequests = new Map();
+const sendingStatuses = new Set(['dispatching', 'checking', 'creating', 'switching', 'sending', 'accepted']);
+let alarmsRefreshing = false;
+
+const historyDialog = $('#request-history-dialog');
+let historyController = null, historyTimer = null, historySignature = null;
+// Lucide-style outline icons, kept local like the rest of the page's icons.
+const historyIcons = {
+  automatic: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M5 3 2 6m17-3 3 3M6 20l-1 2m13-2 1 2"/>',
+  manual: '<path d="m4 3 7 18 2-8 8-2Z"/>',
+  continue: '<path d="m6 3 14 9-14 9Z"/>',
+  custom: '<path d="m22 2-7 20-4-9-9-4Zm0 0L11 13"/>',
+  main: '<rect x="3" y="3" width="18" height="14" rx="2"/><path d="M8 21h8m-4-4v4"/>',
+  isolated: '<path d="M20 20H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2Z"/>',
+  unknown: '<circle cx="12" cy="12" r="10"/><path d="M9 9a3 3 0 0 1 6 0c0 2-3 3-3 3m0 4h.01"/>'
+};
+function historyIcon(name) {
+  return `<svg viewBox="0 0 24 24" aria-hidden="true">${historyIcons[name] || historyIcons.unknown}</svg>`;
+}
+function historyElement(tag, className, text) {
+  const element = document.createElement(tag); element.className = className;
+  if (text !== undefined) element.textContent = text;
+  return element;
+}
+const historyTimeFormat = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' });
+const historyDateFormat = new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit' });
+function renderRequestHistory(data) {
+  const records = data.requests || [], list = $('#request-history-list'), body = $('#request-history-body');
+  const signature = JSON.stringify(records);
+  if (signature !== historySignature) {
+    const expanded = new Set([...list.querySelectorAll('details[open]')].map(el => el.dataset.id));
+    const focused = document.activeElement?.closest('.request-history-record')?.dataset.id;
+    const scroll = body.scrollTop, fragment = document.createDocumentFragment();
+    for (const record of records) {
+      const row = historyElement('details', 'request-history-record'); row.dataset.id = record.id;
+      row.open = expanded.has(record.id);
+      const summary = historyElement('summary', 'request-history-summary');
+      const date = new Date(record.time), time = historyElement('time', 'request-history-time', historyTimeFormat.format(date));
+      time.dateTime = record.time;
+      time.append(historyElement('small', '', historyDateFormat.format(date)));
+      const kinds = { automatic: '自动触发', manual: '手动发送', continue: '发送 continue', custom: '定向发送' };
+      const kind = historyElement('span', 'request-history-kind');
+      const kindIcon = historyElement('i', ''); kindIcon.innerHTML = historyIcon(record.kind);
+      kind.append(kindIcon, document.createTextNode(kinds[record.kind] || '发送请求'));
+      const accountName = record.account_name || (record.account_id ? `账号 #${record.account_id.slice(0, 8)}` : '未记录');
+      const account = historyElement('span', 'request-history-account', accountName); account.title = accountName;
+      const locationName = record.route === 'main' ? '主后台' : record.route === 'isolated' ? 'Home' : '未确定';
+      const fullLocation = record.route === 'isolated' ? `${accountName} 的独立 Home` : locationName;
+      const location = historyElement('span', 'request-history-location');
+      location.innerHTML = historyIcon(record.route); location.append(document.createTextNode(locationName)); location.title = fullLocation;
+      location.setAttribute('aria-label', `发送位置：${fullLocation}`);
+      const status = historyElement('span', `request-history-status is-${record.status}`, record.status_label);
+      summary.append(time, kind, account, location, status, historyElement('span', 'request-history-chevron', '›'));
+      const detail = historyElement('div', 'request-history-detail'), dl = document.createElement('dl');
+      const fields = [['触发原因', record.reason], ['发送内容', record.message],
+        ['目标会话', record.thread_name || record.thread_id || '未记录'], ['发送位置', fullLocation],
+        ['结果说明', record.result], ['请求编号', record.id]];
+      if (record.turn_id) fields.push(['回执编号', record.turn_id]);
+      for (const [label, value] of fields) {
+        const dd = document.createElement('dd');
+        if (['发送内容', '请求编号', '回执编号'].includes(label)) dd.append(historyElement('code', '', value || '未记录'));
+        else dd.textContent = value || '未记录';
+        dl.append(historyElement('dt', '', label), dd);
+      }
+      detail.append(dl); row.append(summary, detail); fragment.append(row);
+    }
+    list.replaceChildren(fragment); historySignature = signature;
+    if (focused) [...list.children].find(el => el.dataset.id === focused)?.querySelector('summary').focus({ preventScroll: true });
+    body.scrollTop = scroll;
+  }
+  $('#request-history-count').textContent = records.length ? String(records.length) : '';
+  const state = $('#request-history-state');
+  state.textContent = !records.length ? '暂无请求记录，Okeeper 发起请求后会显示在这里。' : data.partial ? '部分历史记录暂时无法读取，已展示其余记录。' : '';
+  state.hidden = !state.textContent; state.classList.remove('is-error');
+  body.hidden = !records.length;
+  $('#request-history-footnote').textContent = `仅记录 Okeeper 请求 · Home 按账号独立${records.length >= data.limit ? ` · 最近 ${data.limit} 条` : ''}`;
+}
+async function loadRequestHistory() {
+  if (!historyDialog.open || historyController || document.hidden) return;
+  const controller = new AbortController(); historyController = controller;
+  $('#request-history-body').setAttribute('aria-busy', 'true');
+  $('#refresh-request-history').disabled = true;
+  try {
+    const response = await fetch('/api/requests', { cache: 'no-store', signal: controller.signal });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || '暂时无法读取请求记录，请稍后重试');
+    if (historyDialog.open && !controller.signal.aborted) renderRequestHistory(data);
+  } catch (error) {
+    if (!controller.signal.aborted && historyDialog.open) {
+      const state = $('#request-history-state'); state.hidden = false; state.classList.add('is-error');
+      state.textContent = `${historySignature === null ? '' : '当前显示上次读取的记录。'}读取失败，请点击刷新重试。`;
+    }
+  } finally {
+    if (historyController === controller) {
+      historyController = null; $('#refresh-request-history').disabled = false;
+      $('#request-history-body').setAttribute('aria-busy', 'false');
+    }
+  }
+}
+$('#open-request-history').addEventListener('click', () => {
+  historyDialog.showModal(); $('#open-request-history').setAttribute('aria-expanded', 'true');
+  if (historySignature === null) {
+    $('#request-history-state').textContent = '正在读取请求记录…'; $('#request-history-state').hidden = false;
+    $('#request-history-body').hidden = true;
+  }
+  loadRequestHistory(); historyTimer = setInterval(loadRequestHistory, 5000);
+});
+$('#close-request-history').addEventListener('click', () => historyDialog.close());
+$('#dismiss-request-history').addEventListener('click', () => historyDialog.close());
+$('#refresh-request-history').addEventListener('click', loadRequestHistory);
+historyDialog.addEventListener('close', () => {
+  clearInterval(historyTimer); historyTimer = null; historyController?.abort(); historyController = null;
+  $('#refresh-request-history').disabled = false;
+  $('#request-history-body').setAttribute('aria-busy', 'false');
+  $('#open-request-history').setAttribute('aria-expanded', 'false');
+});
+historyDialog.addEventListener('click', event => {
+  if (event.target !== historyDialog) return;
+  const r = historyDialog.getBoundingClientRect();
+  if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) historyDialog.close();
+});
+document.addEventListener('visibilitychange', () => { if (!document.hidden) loadRequestHistory(); });
 
 function animateTelemetry(fromCount, toCount, fromTokens, toTokens, deltaCount = 0, deltaTokens = 0) {
   const countEl = $('#stat-trigger-count'), tokenEl = $('#stat-trigger-tokens');
@@ -117,7 +248,9 @@ function deliveryPayload(alarm) {
   return alarm.target_type === 'thread'
     ? {
         target_type: 'thread',
+        account_id: alarm.account_id || '',
         thread_id: alarm.thread_id,
+        new_session: alarm.new_session || null,
         prompt: alarm.prompt,
         custom_model: alarm.custom_model || '',
         custom_effort: alarm.custom_effort || ''
@@ -148,7 +281,7 @@ function renderModelChoices() {
   const inheritOpt = document.createElement('option');
   inheritOpt.value = '';
   const inheritedSpec = selectedThread ? formatModelEffort(selectedThread.model, selectedThread.effort) : '';
-  inheritOpt.textContent = inheritedSpec ? `沿用会话设置 (${inheritedSpec})` : '沿用会话当前设置';
+  inheritOpt.textContent = selectedThread?.new_session ? '使用执行时的默认模型' : inheritedSpec ? `沿用会话设置 (${inheritedSpec})` : '沿用会话当前设置';
   mSelect.append(inheritOpt);
 
   for (const m of availableModels) {
@@ -169,7 +302,7 @@ function renderModelChoices() {
   if (!customModelChoice) {
     const opt = document.createElement('option');
     opt.value = '';
-    opt.textContent = selectedThread?.effort ? `沿用会话 (${selectedThread.effort})` : '沿用会话档位';
+    opt.textContent = selectedThread?.new_session ? '使用默认档位' : selectedThread?.effort ? `沿用会话 (${selectedThread.effort})` : '沿用会话档位';
     eSelect.append(opt);
     eSelect.value = '';
     eSelect.disabled = true;
@@ -222,7 +355,26 @@ function renderAccountChoices() {
     missing.textContent = editingAlarm?.account_name || '账号暂时不可用'; select.append(missing);
   }
   select.value = accountChoice;
+  const custom = $('#custom-account'); custom.replaceChildren();
+  const current = document.createElement('option'); current.value = ''; current.textContent = '跟随执行时的主后台账号'; custom.append(current);
+  for (const account of availableAccounts) {
+    const option = document.createElement('option'); option.value = account.id;
+    option.textContent = account.name + (account.switchable === false ? '（请先重新授权）' : '');
+    option.disabled = account.switchable === false; custom.append(option);
+  }
+  if (customAccountChoice && !availableAccounts.some(a => a.id === customAccountChoice)) {
+    const missing = document.createElement('option'); missing.value = customAccountChoice;
+    missing.textContent = editingAlarm?.account_name || '账号暂时不可用'; missing.disabled = true; custom.append(missing);
+  }
+  custom.value = customAccountChoice;
+  updateCustomAccountNote();
 }
+function updateCustomAccountNote() {
+  $('#custom-account-note').textContent = customAccountChoice
+    ? '到点时若账号不同，会先切换主后台并重启，再向原会话发送。后台有任务运行时跳过，避免中断工作。'
+    : '使用执行时主后台登录的账号，不主动切号。';
+}
+$('#custom-account').onchange = event => { customAccountChoice = event.target.value; updateCustomAccountNote(); };
 async function loadAccountChoices() {
   try {
     availableAccounts = (await request('/api/accounts')).accounts;
@@ -242,7 +394,7 @@ function updateDelivery() {
   $('#account-delivery').hidden = custom;
   const spec = selectedThread ? formatModelEffort(selectedThread.model, selectedThread.effort) : '';
   $('#chosen-name').textContent = selectedThread ? `${selectedThread.name}${spec ? ` (${spec})` : ''}` : '选择一个会话';
-  $('#chosen-id').textContent = selectedThread ? `session id: ${selectedThread.id}` : '当前服务器全部会话';
+  $('#chosen-id').textContent = selectedThread?.new_session ? `到点创建 · ${selectedThread.new_session.cwd}` : selectedThread ? `session id: ${selectedThread.id}` : '当前服务器全部会话';
   if (custom) renderModelChoices();
 }
 function renderSessions() {
@@ -402,7 +554,7 @@ $('#confirm-control').onclick = async () => {
   try {
     const operation = await request('/api/account-control', 'POST', controlAction);
     controlDialog.close();
-    controlState = { ...(controlState || {}), operation, busy: ['queued', 'stopping', 'backing_up', 'activating', 'starting', 'verifying', 'rolling_back'].includes(operation.status) };
+    controlState = { ...(controlState || {}), operation, busy: ['queued', 'capturing', 'stopping', 'backing_up', 'activating', 'starting', 'verifying', 'continuing', 'rolling_back'].includes(operation.status) };
     renderControl(); refreshControl();
   } catch (error) { $('#control-error').textContent = error.message; }
   finally { button.disabled = false; }
@@ -415,6 +567,11 @@ let watchState = null, watchSaving = false, watchVersion = 0;
 function renderWatch() {
   const input = $('#auto-switch'); input.checked = Boolean(watchState?.enabled); input.disabled = watchSaving || !watchState;
   input.setAttribute('aria-checked', String(Boolean(watchState?.enabled)));
+  const resume = $('#auto-continue');
+  resume.checked = Boolean(watchState?.continue_tasks);
+  resume.disabled = watchSaving || !watchState || !watchState.enabled;
+  resume.setAttribute('aria-checked', String(Boolean(watchState?.continue_tasks)));
+  resume.title = watchState?.enabled ? '自动切号成功后，向受影响的原会话发送 continue；保留原模型与权限' : '请先开启额度用尽后自动切换';
   $('#auto-switch-status').textContent = watchState?.enabled ? (watchState.message || '已开启 · 等待检查') : '已关闭';
   $('#auto-switch-status').title = watchState?.checked_at ? `上次检查：${quotaDate.format(new Date(watchState.checked_at))}` : '';
 }
@@ -428,19 +585,22 @@ async function refreshWatch() {
     if (!watchState) $('#auto-switch-status').textContent = '暂时无法读取设置';
   }
 }
-$('#auto-switch').onchange = async event => {
-  if (watchSaving) return; const enabled = event.target.checked; watchSaving = true; watchVersion++; event.target.disabled = true;
-  try { watchState = await request('/api/quota-watch', 'PATCH', { enabled }); toast(enabled ? '自动切换已开启' : '自动切换已关闭'); }
+async function saveWatch(payload,message) {
+  if (watchSaving) return; watchSaving = true; watchVersion++;
+  $('#auto-switch').disabled = true; $('#auto-continue').disabled = true;
+  try { watchState = await request('/api/quota-watch', 'PATCH', payload); toast(message); }
   catch (error) { toast(error.message); }
   finally { watchSaving = false; renderWatch(); }
-};
+}
+$('#auto-switch').onchange = event => saveWatch({ enabled:event.target.checked },event.target.checked ? '自动切换已开启' : '自动切换已关闭');
+$('#auto-continue').onchange = event => saveWatch({ continue_tasks:event.target.checked },event.target.checked ? '切号后继续任务已开启' : '切号后继续任务已关闭');
 setInterval(refreshWatch, 15000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshWatch(); });
 refreshWatch();
 
 function quotaWindowLabel(seconds) {
-  if (seconds === 18000) return '短期额度';
-  if (seconds === 604800) return '每周额度';
+  if (seconds === 18000) return '5h额度';
+  if (seconds === 604800) return 'weekly额度';
   if (seconds === 2592000) return '每月额度';
   if (!seconds) return '订阅额度';
   return seconds >= 86400 ? `${Math.round(seconds / 86400)} 天额度` : '周期额度';
@@ -468,7 +628,7 @@ function effectiveAccounts() {
       });
     }
   }
-  return [...map.values()];
+  return [...map.values()].filter(a => !disabledAccounts.has(a.id));
 }
 
 function alignResetButton(account) {
@@ -511,6 +671,39 @@ function alignResetButton(account) {
     }
   };
   return btn;
+}
+
+function manualSendButton(account) {
+  const button = document.createElement('button');
+  const run = snapshot?.manual_runs?.[account.id];
+  const busy = manualRequests.get(account.id)?.busy || sendingStatuses.has(run?.status);
+  button.type = 'button';
+  button.className = 'lane-action-btn manual-send-btn';
+  button.textContent = busy ? '发送中…' : '立即发送';
+  button.disabled = Boolean(busy);
+  button.title = '立即向此账号发送一次 ok；窗口起止以额度服务返回为准';
+  button.onclick = async () => {
+    if (manualRequests.get(account.id)?.busy) return;
+    const pending = manualRequests.get(account.id) || {
+      request_id: crypto.randomUUID?.() || 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+        const n = crypto.getRandomValues(new Uint8Array(1))[0] & 15;
+        return (c === 'x' ? n : (n & 3) | 8).toString(16);
+      })
+    };
+    pending.busy = true; manualRequests.set(account.id, pending); syncAccountLanes();
+    try {
+      const data = await request(`/api/accounts/${account.id}/trigger`, 'POST', { request_id: pending.request_id });
+      manualRequests.delete(account.id);
+      accept(data);
+      const result = data.manual_runs?.[account.id];
+      toast(result?.status === 'failed_or_uncertain' ? result.error : '已提交发送，请等待结果');
+    } catch (error) {
+      // Keep the request ID: a lost response must never cause a second send.
+      pending.busy = false;
+      toast(error.message);
+    } finally { syncAccountLanes(); }
+  };
+  return button;
 }
 
 function syncAccountLanes() {
@@ -595,6 +788,19 @@ function syncAccountLanes() {
     qTitle.append(qCount);
 
     const qActions = document.createElement('div'); qActions.className = 'queue-actions';
+    qActions.append(manualSendButton(account));
+    const manualRun = snapshot?.manual_runs?.[account.id];
+    if (manualRun) {
+      const status = document.createElement('span'); status.className = 'manual-send-status';
+      status.setAttribute('role', 'status');
+      const labels = { completed: '已发送', skipped_busy: '账号忙碌', skipped_missed: '启动超时',
+        skipped_account_changed: '账号已变更', failed_or_uncertain: '未确认完成' };
+      status.textContent = manualRequests.get(account.id)?.busy || sendingStatuses.has(manualRun.status)
+        ? '准备发送' : labels[manualRun.status] || '未完成';
+      status.title = manualRun.error || (manualRun.status === 'completed' ? '已核验本次发送完成'
+        : sendingStatuses.has(manualRun.status) ? '等待发送结果' : '本次未确认发送完成，可重新点击发送');
+      qActions.append(status);
+    }
     const alignBtn = alignResetButton(account);
     if (alignBtn) qActions.append(alignBtn);
     const addBtn = document.createElement('button');
@@ -680,14 +886,13 @@ function calendarDayDiff(targetDate, now) {
   return Math.round((d2 - d1) / 86400000);
 }
 function isRetiredOnce(alarm, now) {
-  return !alarm.enabled && alarm.mode === 'once' && (!alarm.run_at || new Date(alarm.run_at).getTime() < now.getTime() - 60000);
+  return !alarm.enabled && alarm.mode === 'once' && (alarm.consumed_at || !alarm.run_at || new Date(alarm.run_at) <= now);
 }
 function occurrenceTarget(alarm, now) {
   if (alarm.mode === 'once' && alarm.run_at) {
     const runDate = new Date(alarm.run_at);
-    if (alarm.enabled || runDate.getTime() >= now.getTime() - 60000) return runDate;
+    if (!isRetiredOnce(alarm, now)) return runDate;
   }
-  if (alarm.next_at && alarm.enabled) return new Date(alarm.next_at);
   return dailyTarget(alarm.time, now);
 }
 function sortAlarmsByNext(alarms, now) {
@@ -767,13 +972,19 @@ async function request(path, method = 'GET', payload = {}) {
   const data = await response.json(); if (!response.ok) throw new Error(data.error || '操作失败，请重试'); return data;
 }
 function accept(data) {
+  const completedManual = Object.values(data.manual_runs || {}).some(run => run.status === 'completed' &&
+    (snapshot?.manual_runs?.[run.account_id]?.slot !== run.slot || snapshot?.manual_runs?.[run.account_id]?.status !== 'completed'));
   snapshot = data; clockOffset = new Date(data.now).getTime() - Date.now();
+  for (const [accountId, pending] of manualRequests) {
+    if (data.manual_runs?.[accountId]?.slot?.endsWith(`:${pending.request_id}`)) manualRequests.delete(accountId);
+  }
   $('#connection').classList.remove('offline'); $('#connection span').textContent = '已连接';
   $('#error-banner').hidden = true;
   if ((data.alarms || []).some(a => a.target_type === 'thread') && !sessionsLoadedOnce && !sessionLoading) {
     loadSessions(true);
   }
   render();
+  if (completedManual) refreshQuota(true);
 }
 
 function buildAlarmCard(alarm, existingCard) {
@@ -807,7 +1018,11 @@ function buildAlarmCard(alarm, existingCard) {
     customMeta.hidden = !isCustom;
     if (isCustom) {
       customMeta.querySelector('.custom-session-title').textContent = alarm.thread_name || '指定会话';
-      customMeta.querySelector('.custom-session-id').textContent = alarm.thread_id ? `#${alarm.thread_id.slice(0, 8)}` : '';
+      customMeta.querySelector('.custom-session-id').textContent = alarm.new_session ? '到点新建' : alarm.thread_id ? `#${alarm.thread_id.slice(0, 8)}` : '';
+      customMeta.querySelector('.custom-session-id').title = alarm.new_session?.cwd || '';
+      let accountLabel = customMeta.querySelector('.custom-account-name');
+      if (!accountLabel) { accountLabel = document.createElement('span'); accountLabel.className = 'custom-account-name'; customMeta.append(accountLabel); }
+      accountLabel.textContent = alarm.account_id ? `执行账号：${alarm.account_name || '指定账号'}` : '执行账号：跟随主后台';
       const modelBadge = customMeta.querySelector('.custom-session-model');
       if (modelBadge) {
         const sessionMeta = sessions.find(s => s.id === alarm.thread_id);
@@ -834,10 +1049,10 @@ function buildAlarmCard(alarm, existingCard) {
   const statuses = { completed: '已完成', failed: '发送失败', missed: '已错过', pending: '发送中' };
   const result = alarm.last_run?.status;
   const customStatuses = {
-    dispatching: '准备发送', checking: '准备发送', sending: '准备发送', accepted: '已启动', running: '执行中',
+    dispatching: '准备发送', checking: '准备发送', creating: '正在创建', switching: '正在切号', sending: '准备发送', accepted: '已启动', running: '执行中',
     waiting_input: '等待确认', observing_disconnected: '等待连接', completed: alarm.enabled ? '上次已完成' : '已完成',
-    skipped_busy: '忙碌跳过', skipped_missed: '已错过', skipped_changed: '设置已变更',
-    skipped_account_changed: '账号已变更', failed_or_uncertain: '执行失败'
+    skipped_busy: '忙碌跳过', skipped_missed: '已错过', skipped_changed: '设置已变更', skipped_settings: '设置未确认',
+    skipped_account_changed: '账号已变更', skipped_account_unavailable: '账号不可用', skipped_switch_failed: '切号未完成', skipped_disabled: '账号已停用', failed_or_uncertain: '执行失败'
   };
   const status = article.querySelector('.alarm-status');
   status.textContent = (isCustom || alarm.account_id) && result
@@ -953,6 +1168,16 @@ function updateClock() {
   const now = currentTime();
   $('#server-time').textContent = `台北时间 ${fmtClock.format(now)}`;
   if (!snapshot) return;
+  // Reorder existing nodes on the clock tick as well as after server updates.
+  // Daily alarms roll over at their due time; consumed one-shots retire at once.
+  document.querySelectorAll('.alarm-grid').forEach(container => {
+    const alarms = [...container.children].map(card => snapshot.alarms.find(a => a.id === card.dataset.id)).filter(Boolean);
+    if (container === grid && !alarms.some(a => a.mode === 'once')) return;
+    sortAlarmsByNext(alarms, now).forEach((alarm, index) => {
+      const card = [...container.children].find(el => el.dataset.id === alarm.id);
+      if (card && container.children[index] !== card) container.insertBefore(card, container.children[index] || null);
+    });
+  });
   const candidates = snapshot.alarms
     .filter(a => a.enabled)
     .map(a => ({ ...a, target: a.mode === 'once' ? new Date(a.run_at) : dailyTarget(a.time, now) }))
@@ -995,7 +1220,9 @@ function updateClock() {
   $('#hour-hand').setAttribute('transform', `rotate(${(hour % 12) * 30 + minute / 2} 60 60)`);
   $('#minute-hand').setAttribute('transform', `rotate(${minute * 6} 60 60)`);
   const nowHm = fmtTime.format(now);
-  if (now.getSeconds() <= 20 && snapshot.alarms.some(a => a.enabled && a.target_type !== 'thread' && a.time === nowHm)) {
+  const awaitingSend = Object.values(snapshot.manual_runs || {}).some(run => sendingStatuses.has(run.status)) ||
+    snapshot.alarms.some(a => sendingStatuses.has(a.last_run?.status));
+  if (awaitingSend || (now.getSeconds() <= 20 && snapshot.alarms.some(a => a.enabled && a.target_type !== 'thread' && a.time === nowHm))) {
     if (Date.now() - lastFastPoll >= 2000) {
       lastFastPoll = Date.now();
       refresh();
@@ -1028,12 +1255,13 @@ function openDialog(alarm = null, preset = {}) {
   $('#dialog-title').textContent = alarm ? '修改时间' : (targetType === 'thread' ? '新建定向会话发送' : '添加一个时间');
   $('#save-button').textContent = alarm ? '保存修改' : '添加时间';
   accountChoice = alarm ? (alarm.account_id || '') : (preset.account_id !== undefined ? preset.account_id : '');
+  customAccountChoice = alarm?.target_type === 'thread' ? (alarm.account_id || '') : '';
   renderAccountChoices(); loadAccountChoices();
   const time = alarm?.time || preset.time || fmtTime.format(new Date(currentTime().getTime() + 1800000));
   const [h, m] = time.split(':'); setWheel('hour', Number(h), false); setWheel('minute', Number(m), false);
   const existingSession = alarm?.target_type === 'thread' ? sessions.find(s => s.id === alarm.thread_id) : null;
   selectedThread = alarm?.target_type === 'thread'
-    ? { id: alarm.thread_id, name: alarm.thread_name || '指定会话', model: existingSession?.model || alarm.last_run?.model, effort: existingSession?.effort || alarm.last_run?.effort }
+    ? { id: alarm.thread_id, name: alarm.thread_name || '指定会话', new_session: alarm.new_session || null, model: existingSession?.model || alarm.last_run?.model, effort: existingSession?.effort || alarm.last_run?.effort }
     : null;
   customModelChoice = alarm?.target_type === 'thread' ? (alarm.custom_model || '') : '';
   customEffortChoice = alarm?.target_type === 'thread' ? (alarm.custom_effort || '') : '';
@@ -1244,8 +1472,10 @@ $('#add-form').addEventListener('submit', async event => {
     payload = { time: selectedTime(), mode: selectedMode(), enabled: editingAlarm ? editingAlarm.enabled : true, target_type: selectedDelivery() };
     if (payload.target_type === 'default') payload.account_id = accountChoice;
     if (payload.target_type === 'thread') {
+      payload.account_id = customAccountChoice;
       if (!selectedThread) throw new Error('请选择一个 Codex 会话');
       payload.thread_id = selectedThread.id;
+      payload.new_session = selectedThread.new_session || null;
       payload.prompt = $('#alarm-prompt').value;
       if (!payload.prompt.trim()) throw new Error('请填写要发送的提示词');
       payload.custom_model = customModelChoice || '';
@@ -1271,16 +1501,166 @@ $('#undo-button').addEventListener('click', async () => {
 });
 
 async function refresh() {
-  if (loadingMutation || dialog.open) return;
-  try { accept(await request('/api/alarms')); }
+  if (loadingMutation || dialog.open || alarmsRefreshing) return;
+  alarmsRefreshing = true;
+  const previous = snapshot;
+  try {
+    const data = await request('/api/alarms');
+    if (!loadingMutation && previous === snapshot) accept(data);
+  }
   catch (error) {
     $('#connection').classList.add('offline');
     $('#connection span').textContent = '连接中断';
     $('#error-banner').textContent = error.message;
     $('#error-banner').hidden = false;
   }
+  finally { alarmsRefreshing = false; }
 }
 setInterval(updateClock, 1000);
 setInterval(refresh, 15000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
 refresh();
+
+function acceptManagedAccounts(accounts) {
+  managedAccounts = accounts;
+  disabledAccounts.clear();
+  for (const account of accounts) if (!account.enabled) disabledAccounts.add(account.id);
+  availableAccounts = availableAccounts.filter(a => !disabledAccounts.has(a.id));
+  if (snapshot) render();
+  renderManagedAccounts();
+}
+function renderManagedAccounts() {
+  const list = $('#managed-account-list'); list.replaceChildren();
+  if (!managedAccounts.length) {
+    const empty = document.createElement('p'); empty.className = 'management-help';
+    empty.textContent = '尚未添加账号。通过下方授权登录添加。'; list.append(empty);
+  }
+  for (const account of managedAccounts) {
+    const row = document.createElement('div'); row.className = 'managed-account';
+    row.dataset.accountId = account.id; row.classList.toggle('is-disabled', !account.enabled);
+    const copy = document.createElement('div'); copy.className = 'managed-account-copy';
+    const name = document.createElement('strong'); name.textContent = account.name;
+    const status = document.createElement('small');
+    status.textContent = account.enabled ? (account.current ? '已启用 · 当前主后台' : '已启用') : '已停用 · 保留登录状态';
+    copy.append(name, status);
+    const button = document.createElement('button'); button.type = 'button'; button.className = 'cancel-button';
+    button.textContent = account.enabled ? '停用' : '重新启用'; button.disabled = managementBusy;
+    button.setAttribute('aria-label', `${account.enabled ? '停用' : '重新启用'} ${account.name}`);
+    button.onclick = async () => {
+      if (managementBusy) return;
+      managementBusy = true; $('#accounts-error').textContent = ''; renderManagedAccounts();
+      try {
+        const data = await request(`/api/account-management/${account.id}`, 'PATCH', { enabled: !account.enabled });
+        acceptManagedAccounts(data.accounts);
+        toast(account.enabled ? '账号已停用，登录状态已保留' : '账号已重新启用');
+        await Promise.allSettled([loadAccountChoices(), refresh(), refreshQuota(true), refreshControl()]);
+      } catch (error) { $('#accounts-error').textContent = error.message; }
+      finally { managementBusy = false; renderManagedAccounts(); }
+    };
+    row.append(copy, button); list.append(row);
+  }
+}
+function renderLogin() {
+  const waiting = loginState.status === 'waiting', busy = waiting || loginState.status === 'starting';
+  $('#account-login-details').hidden = !waiting;
+  $('#account-login-code').textContent = waiting ? loginState.code : '';
+  const link = $('#account-login-url');
+  // The server validates this as well; never turn arbitrary response URLs into links.
+  let valid = false;
+  try { const url = new URL(loginState.url); valid = url.protocol === 'https:' && url.hostname === 'auth.openai.com' && !url.username && !url.password; } catch {}
+  if (waiting && valid) link.href = loginState.url; else link.removeAttribute('href');
+  link.hidden = !valid;
+  $('#start-account-login').disabled = busy;
+  $('#start-account-login').textContent = busy ? (waiting ? '等待授权…' : '正在生成登录码…') : '授权登录';
+  $('#cancel-account-login').hidden = !busy;
+  const messages = { idle: '', starting: '正在向 Codex 请求登录码…', waiting: '请在官方页面完成授权。登录码约十分钟有效。',
+    completed: `${loginState.name || '账号'} 已添加，可关闭账号管理。`, cancelled: '本次授权已取消。', expired: '登录码已过期，请重新授权。' };
+  $('#account-login-status').textContent = loginState.error || (messages[loginState.status] ?? '登录未完成，请重试。');
+}
+async function refreshManagement() {
+  try {
+    const data = await request('/api/account-management');
+    acceptManagedAccounts(data.accounts || []); loginState = data.login || { status: 'idle' }; renderLogin();
+    if (loginState.status === 'completed' && completedLogin !== loginState.id) {
+      completedLogin = loginState.id;
+      await Promise.allSettled([loadAccountChoices(), refresh(), refreshQuota(true)]);
+    }
+  } catch (error) { if ($('#accounts-dialog').open) $('#accounts-error').textContent = error.message; }
+}
+$('#manage-accounts').onclick = () => {
+  $('#accounts-error').textContent = ''; $('#accounts-dialog').showModal(); refreshManagement();
+  if (!managementPoll) managementPoll = setInterval(() => { if (!managementBusy) refreshManagement(); }, 2000);
+};
+$('#close-accounts').onclick = () => $('#accounts-dialog').close();
+$('#accounts-dialog').addEventListener('close', () => { clearInterval(managementPoll); managementPoll = null; });
+$('#start-account-login').onclick = async () => {
+  $('#start-account-login').disabled = true; $('#accounts-error').textContent = '';
+  try { loginState = await request('/api/account-login', 'POST'); renderLogin(); }
+  catch (error) { $('#accounts-error').textContent = error.message; $('#start-account-login').disabled = false; }
+};
+$('#cancel-account-login').onclick = async () => {
+  $('#cancel-account-login').disabled = true;
+  try { loginState = await request('/api/account-login', 'DELETE'); renderLogin(); }
+  catch (error) { $('#accounts-error').textContent = error.message; }
+  finally { $('#cancel-account-login').disabled = false; }
+};
+$('#copy-login-code').onclick = async () => {
+  try { await navigator.clipboard.writeText(loginState.code); toast('登录码已复制'); }
+  catch { toast('可长按或选中登录码进行复制'); }
+};
+refreshManagement();
+
+function setSessionCreating(value) {
+  sessionCreating = value;
+  for (const selector of ['#create-session', '#close-new-session', '#cancel-new-session', '#new-session-name', '#workspace-path', '#browse-workspace']) $(selector).disabled = value;
+  $('#create-session').disabled = value || !workspace || workspaceLoading;
+  $('#create-session').textContent = value ? '正在保存…' : '使用此配置';
+  $('#workspace-up').disabled = value || workspaceLoading || !workspace?.parent;
+  for (const button of $('#workspace-list').querySelectorAll('button')) button.disabled = value;
+}
+async function browseWorkspace(path = '') {
+  if (sessionCreating) return;
+  const version = ++workspaceVersion;
+  workspaceLoading = true; $('#workspace-status').textContent = '正在读取文件夹…'; setSessionCreating(false);
+  $('#new-session-error').textContent = '';
+  try {
+    const data = await request(`/api/workspaces${path ? `?path=${encodeURIComponent(path)}` : ''}`);
+    if (version !== workspaceVersion) return;
+    workspace = data; $('#workspace-path').value = data.path; $('#workspace-current').textContent = data.path;
+    const list = $('#workspace-list'); list.replaceChildren();
+    for (const directory of data.directories || []) {
+      const button = document.createElement('button'); button.type = 'button'; button.className = 'workspace-option';
+      button.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2.5 5.5h6l2-2h7v13h-15z"/></svg>';
+      const name = document.createElement('span'); name.textContent = directory.name; button.append(name);
+      button.onclick = () => browseWorkspace(directory.path); list.append(button);
+    }
+    $('#workspace-status').textContent = data.directories?.length ? '可进入子文件夹，或使用当前文件夹创建会话。' : '此文件夹下没有可选子文件夹，可直接在此创建会话。';
+    sessionCreateRequest = null;
+  } catch (error) {
+    if (version === workspaceVersion) { workspace = null; $('#new-session-error').textContent = error.message; $('#workspace-status').textContent = '可修改路径后重新打开。'; }
+  } finally { if (version === workspaceVersion) { workspaceLoading = false; setSessionCreating(false); } }
+}
+$('#new-session').onclick = () => {
+  $('#new-session-name').value = ''; $('#new-session-error').textContent = '';
+  sessionCreateRequest = null; $('#new-session-dialog').showModal(); browseWorkspace();
+};
+$('#browse-workspace').onclick = () => browseWorkspace($('#workspace-path').value.trim());
+$('#workspace-up').onclick = () => { if (workspace?.parent) browseWorkspace(workspace.parent); };
+$('#workspace-path').addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); browseWorkspace(event.target.value.trim()); } });
+$('#workspace-path').addEventListener('input', () => { workspace = null; sessionCreateRequest = null; $('#create-session').disabled = true; });
+$('#new-session-name').addEventListener('input', () => { sessionCreateRequest = null; });
+$('#close-new-session').onclick = $('#cancel-new-session').onclick = () => { if (!sessionCreating) $('#new-session-dialog').close(); };
+$('#new-session-dialog').addEventListener('cancel', event => { if (sessionCreating) event.preventDefault(); });
+$('#new-session-form').addEventListener('submit', async event => {
+  event.preventDefault();
+  if (sessionCreating || workspaceLoading || !workspace) return;
+  sessionCreateRequest ||= { request_id: newRequestId(), cwd: workspace.path, name: $('#new-session-name').value.trim() };
+  $('#new-session-error').textContent = ''; setSessionCreating(true);
+  try {
+    selectedThread = { id: sessionCreateRequest.request_id, name: sessionCreateRequest.name || '到点新建会话', new_session: { cwd: sessionCreateRequest.cwd, name: sessionCreateRequest.name } };
+    renderModelChoices(); updateDelivery(); renderSessions(); $('#new-session-dialog').close(); threadDialog.close();
+    $('#choose-thread').focus({ preventScroll: true });
+    sessionCreateRequest = null; toast('已选择新会话配置，保存任务后将在到点时创建并发送');
+  } catch (error) { $('#new-session-error').textContent = error.message; }
+  finally { setSessionCreating(false); }
+});

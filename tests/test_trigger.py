@@ -89,6 +89,20 @@ class SchedulingTests(unittest.TestCase):
     def test_evening_can_be_first_chat(self):
         self.step(17, 10)
         self.assertEqual(self.sends, ['new-chat'])
+    def test_slow_history_metadata_does_not_consume_a_one_shot_after_deadline(self):
+        from schedule_store import list_alarms, database
+        alarm=next(a for a in list_alarms(self.state) if a['time']=='07:00')
+        # An exact due one-shot, before the initial 15-second deadline.
+        with database(self.state) as db:
+            db.execute("UPDATE alarms SET mode='once',run_at=? WHERE id=?",(self.clock.replace(second=0).isoformat(),alarm['id']))
+        def delayed(_):
+            self.clock=self.clock.replace(second=20)
+            return 'alice@example.com'
+        with patch.object(t,'main_account_name',delayed):t.main()
+        self.assertEqual(self.sends,[])
+        with self.db:
+            row=self.db.execute('SELECT enabled,consumed_at FROM alarms WHERE id=?',(alarm['id'],)).fetchone()
+        self.assertEqual(row,(1,None))
     def test_creation_deletes_only_registered_past_chats_and_defers_busy(self):
         self.db.executemany('INSERT INTO daily_chats VALUES (?,?,?)', [
             ('2026-10-08', 'old-chat', ''), ('2026-10-09', 'busy-old', ''), ('2026-10-11', 'future-chat', '')])

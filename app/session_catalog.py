@@ -16,6 +16,7 @@ def managed_ids(state):
         exists=db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='daily_chats'").fetchone()
         owned={r[0] for r in db.execute('SELECT thread_id FROM daily_chats')} if exists else set()
         owned.update(r[0] for r in db.execute("SELECT thread_id FROM account_daily_chats WHERE route='main'"))
+        owned.update(r[0] for r in db.execute("SELECT thread_id FROM account_runs WHERE alarm_id='' AND route='main' AND thread_id IS NOT NULL"))
         return owned
 
 def is_managed(thread,owned):

@@ -169,7 +169,7 @@ def public_id(key):
     return hashlib.sha256(json.dumps(key).encode()).hexdigest()[:20]
 
 
-def discover_accounts():
+def discover_accounts(*,include_disabled=False):
     """Known live/CC Switch locations only; no history or backup credential scan."""
     records = {}
     warning = None
@@ -212,11 +212,23 @@ def discover_accounts():
         warning = '部分账号来源暂时无法读取'
     # Native profiles are also valid account sources. Never expose their paths.
     from auth_profiles import profiles
+    try:owned_profiles=set(json.loads((STATE/'account-authorizations.json').read_text()))
+    except FileNotFoundError:owned_profiles=set()
     for profile in profiles(AUTH.parent).values():
         add(profile['auth'],'profile')
+        if profile['id'] in owned_profiles:
+            # An explicit Okeeper reauthorization supersedes a stale CC Switch
+            # copy. Its rotating refresh token must have a single owner.
+            records[profile['key']]={'key':profile['key'],'label':profile['name'],'auth':profile['auth'],
+                'source':'profile','managed_id':None,'current':False,'id':profile['id']}
     try: add(json.loads(AUTH.read_text()), 'live', current=True)
     except Exception: pass
-    return sorted(records.values(), key=lambda r: (not r['current'], r['key'][2] or '', r['id'])), warning
+    values=list(records.values())
+    if not include_disabled:
+        from account_preferences import disabled_ids
+        disabled=disabled_ids()
+        values=[r for r in values if r['id'] not in disabled]
+    return sorted(values, key=lambda r: (not r['current'], r['key'][2] or '', r['id'])), warning
 
 
 def cc_switch_running():
@@ -274,8 +286,31 @@ class SavedTokens:
             token = (candidate.get('tokens') or {}).get('access_token')
             if not force and token and claims(token).get('exp', 0) > time.time() + 90:
                 return token
-        if not managed_id or not refresh:
-            raise LoginRequired('请在 CC Switch 重新登录此账号')
+        if not managed_id:
+            from auth_profiles import profiles,read_auth,canonical
+            from codex_stdio import NativeClient
+            profile=profiles(AUTH.parent).get(record['id'])
+            if not profile or not refresh:raise LoginRequired('请在账号管理中重新授权此账号')
+            # Let native Codex own its token renewal in a disposable Home.
+            # Never copy credentials into the main Home's auth.json.
+            with tempfile.TemporaryDirectory(prefix='account-refresh-',dir=STATE) as temporary:
+                temporary=Path(temporary);atomic_json(temporary/'auth.json',profile['auth'])
+                client=NativeClient(temporary)
+                try:
+                    info=client.call('account/read',{'refreshToken':True})
+                    renewed=read_auth(temporary/'auth.json')
+                    if renewed['key']!=record['key'] or (info.get('account') or {}).get('email','').casefold()!=(record['key'][2] or '').casefold():
+                        raise LoginRequired('账号身份核验失败，请重新授权')
+                    latest=read_auth(profile['path'])
+                    if latest['auth']!=profile['auth']:raise ValueError('Saved login changed during refresh')
+                    atomic_json(canonical(AUTH.parent,renewed['auth']),renewed['auth'])
+                    access=renewed['auth']['tokens']['access_token']
+                    cached[record['id']]={'access_token':access,'expires':claims(access).get('exp',0),
+                        'generation':hashlib.sha256(renewed['auth']['tokens']['refresh_token'].encode()).hexdigest()}
+                    atomic_json(TOKEN_STATE,cached)
+                    return access
+                finally:client.close()
+        if not refresh:raise LoginRequired('请在账号管理中重新授权此账号')
         if cc_switch_running():
             raise LoginRequired('请退出 CC Switch 后刷新额度')
         request = Request('https://auth.openai.com/oauth/token', data=urlencode({

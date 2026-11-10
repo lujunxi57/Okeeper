@@ -13,8 +13,10 @@ from rpc import RPC
 from schedule_store import now
 from session_catalog import validate_target
 import custom_store as store
+import custom_account
 
 from settings import STATE
+from request_history import main_account_name
 MAX_LATE=15
 
 def log(event,**fields):
@@ -51,21 +53,46 @@ def verify_message(rpc,thread,turn,prompt):
         if not cursor:return False
 
 def prepare(rpc,run):
+    pending=(run.get('alarm') or {}).get('new_session')
+    if pending:
+        from workspace_sessions import folder
+        if not store.unchanged(STATE,run):raise custom_account.NotSent('skipped_changed','任务设置已变化，本次未创建会话')
+        path=folder(pending['cwd'])
+        # The durable occurrence has already been claimed. An uncertain create
+        # response is never retried; creation and first send share one RPC.
+        store.update(STATE,run['slot'],'creating',route='main')
+        params={'cwd':str(path),'ephemeral':False}
+        alarm=run['alarm']
+        if alarm.get('custom_model'):params['model']=alarm['custom_model']
+        if alarm.get('custom_effort'):params['config']={'model_reasoning_effort':alarm['custom_effort']}
+        result=rpc.call('thread/start',params)
+        run['thread_id']=result['thread']['id']
+        store.update(STATE,run['slot'],'checking',thread_id=run['thread_id'],thread_name=pending['name'] or '新会话')
+        if result['thread']['status']['type']!='idle':return None,'skipped_busy'
+        if not result.get('model') or 'reasoningEffort' not in result:
+            raise custom_account.NotSent('skipped_settings','无法确认新会话设置，未发送')
+        return result,None
     thread,meta=validate_target(STATE,run['thread_id'],rpc)
     if thread['status']['type'] not in ('idle','notLoaded'):return None,'skipped_busy'
     if meta['archived']:
         rpc.call('thread/unarchive',{'threadId':run['thread_id']})
         log('custom_thread_unarchived',slot=run['slot'],thread=run['thread_id'])
-    # No model, effort, permissions, instructions or cwd overrides on resume/start.
+    # Resume never overrides the chat. Explicit task settings apply at turn/start.
     result=rpc.call('thread/resume',{'threadId':run['thread_id'],'excludeTurns':True})
     if result['thread']['id']!=run['thread_id']:raise RuntimeError('目标会话不一致')
     if result['thread']['status']['type']!='idle':return None,'skipped_busy'
-    if not result.get('model') or not result.get('reasoningEffort'):
-        raise RuntimeError('无法确认会话当前的模型和思考强度，未发送')
+    alarm=run.get('alarm') or {}
+    override_model=alarm.get('custom_model') or ''
+    override_effort=alarm.get('custom_effort') or ''
+    # A null effort is the native default, common in a fresh empty chat.
+    # Require only settings that this task actually needs to inherit.
+    if (not override_model and not result.get('model')) or (not override_effort and 'reasoningEffort' not in result):
+        raise custom_account.NotSent('skipped_settings','无法确认会话需要沿用的模型或思考强度，未发送')
     latest=rpc.call('thread/read',{'threadId':run['thread_id']})['thread']
     if latest['status']['type']!='idle':return None,'skipped_busy'
-    if latest.get('model')!=result['model'] or latest.get('reasoningEffort')!=result['reasoningEffort']:
-        raise RuntimeError('会话设置正在变化，未发送')
+    if ((not override_model and latest.get('model')!=result.get('model')) or
+        (not override_effort and latest.get('reasoningEffort')!=result.get('reasoningEffort'))):
+        raise custom_account.NotSent('skipped_settings','会话设置正在变化，未发送')
     return result,None
 
 def observe(rpc,run,turn):
@@ -131,33 +158,48 @@ def execute(slot):
         scheduled=dt.datetime.fromisoformat(run['scheduled'])
         if not 0<=(now()-scheduled).total_seconds()<=MAX_LATE:
             store.finish(STATE,run,'skipped_missed');return
-        lock=(STATE/('thread-'+hashlib.sha256(run['thread_id'].encode()).hexdigest()+'.lock')).open('a')
+        lock=(STATE/('thread-'+hashlib.sha256((run['thread_id'] or run['alarm_id']).encode()).hexdigest()+'.lock')).open('a')
         try:fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
         except BlockingIOError:
             store.finish(STATE,run,'skipped_busy');return
-        rpc=RPC();settings,skip=prepare(rpc,run)
-        if skip:store.finish(STATE,run,skip);return
-        if not store.unchanged(STATE,run):store.finish(STATE,run,'skipped_changed');return
-        if (now()-scheduled).total_seconds()>MAX_LATE:store.finish(STATE,run,'skipped_missed');return
-        alarm_cfg=run.get('alarm') or {}
-        override_model=(alarm_cfg.get('custom_model') or '').strip()
-        override_effort=(alarm_cfg.get('custom_effort') or '').strip()
-        used_model=override_model or settings['model']
-        used_effort=(override_effort or settings.get('reasoningEffort') or 'medium') if override_model else settings['reasoningEffort']
-        store.update(STATE,slot,'sending',model=used_model,effort=used_effort)
-        rpc.events.clear()
-        turn_params={'threadId':run['thread_id'],
-            'input':[{'type':'text','text':run['prompt'],'text_elements':[]}],
-            'clientUserMessageId':str(uuid.uuid5(uuid.NAMESPACE_URL,slot))}
-        if override_model:
-            turn_params['model']=used_model
-            turn_params['effort']=used_effort
-        result=rpc.call('turn/start',turn_params)
-        turn=result['turn']['id'];store.update(STATE,slot,'accepted',turn_id=turn)
-        log('custom_accepted',slot=slot,thread=run['thread_id'],turn_id=turn,model=used_model,effort=used_effort)
+        with custom_account.connection(run,STATE,rpc_factory=RPC) as rpc:
+            delivery_limit=custom_account.MAX_SWITCH_LATE if run.get('_switched_account') else MAX_LATE
+            if (now()-scheduled).total_seconds()>delivery_limit:store.finish(STATE,run,'skipped_missed');return
+            settings,skip=prepare(rpc,run)
+            if skip:store.finish(STATE,run,skip);return
+            if not store.unchanged(STATE,run):store.finish(STATE,run,'skipped_changed');return
+            if (now()-scheduled).total_seconds()>delivery_limit:store.finish(STATE,run,'skipped_missed');return
+            alarm_cfg=run.get('alarm') or {}
+            override_model=(alarm_cfg.get('custom_model') or '').strip()
+            override_effort=(alarm_cfg.get('custom_effort') or '').strip()
+            used_model=override_model or settings['model']
+            used_effort=(override_effort or settings.get('reasoningEffort')) if override_model else settings['reasoningEffort']
+            account_name=main_account_name(rpc)
+            custom_account.verify_target(rpc,run,STATE)
+            if not store.unchanged(STATE,run):store.finish(STATE,run,'skipped_changed');return
+            if (now()-scheduled).total_seconds()>delivery_limit:
+                store.finish(STATE,run,'skipped_missed');return
+            store.update(STATE,slot,'sending',model=used_model,effort=used_effort,route='main',account_name=account_name)
+            rpc.events.clear()
+            turn_params={'threadId':run['thread_id'],
+                'input':[{'type':'text','text':run['prompt'],'text_elements':[]}],
+                'clientUserMessageId':str(uuid.uuid5(uuid.NAMESPACE_URL,slot))}
+            if override_model:
+                turn_params['model']=used_model
+                if used_effort is not None:turn_params['effort']=used_effort
+            result=rpc.call('turn/start',turn_params)
+            turn=result['turn']['id'];store.update(STATE,slot,'accepted',turn_id=turn)
+            log('custom_accepted',slot=slot,thread=run['thread_id'],turn_id=turn,model=used_model,effort=used_effort)
+            pending=run['alarm'].get('new_session')
+            if pending and pending['name']:
+                try:rpc.call('thread/name/set',{'threadId':run['thread_id'],'name':pending['name']})
+                except Exception:log('custom_name_not_saved',slot=slot,thread=run['thread_id'])
         observe(rpc,run,turn)
         store.finish(STATE,run,'completed',completed_at=now().isoformat())
         log('custom_verified_completed',slot=slot,thread=run['thread_id'],turn_id=turn)
+    except custom_account.NotSent as error:
+        store.finish(STATE,run,error.status,error=str(error))
+        log('custom_not_sent',slot=slot,thread=run['thread_id'],status=error.status)
     except Exception as error:
         store.finish(STATE,run,'failed_or_uncertain',error=str(error),turn_id=turn)
         log('custom_failed_or_uncertain',slot=slot,thread=run['thread_id'],turn_id=turn,error=str(error))

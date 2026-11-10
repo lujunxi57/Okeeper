@@ -21,13 +21,29 @@ const root=path.resolve(__dirname,'../..'),python=process.env.OKEEPER_PYTHON||'p
   const seed=spawnSync(python,['-c',"from pathlib import Path;import sys,schedule_store as s;s.create_alarm(Path(sys.argv[1]),{'time':'22:22','target_type':'thread','thread_id':'00000000-0000-0000-0000-000000000009','prompt':'unattended test'})",state],{cwd:path.join(root,'app'),encoding:'utf8'});assert.equal(seed.status,0,seed.stderr);
   await page.goto(base,{waitUntil:'networkidle'});await page.waitForFunction(()=>!document.querySelector('#auto-switch').disabled);
   assert.equal(await page.locator('#auto-switch').isChecked(),false);
+  assert.equal(await page.locator('#auto-continue').isChecked(),false);
+  assert.equal(await page.locator('#auto-continue').isDisabled(),true);
   await page.locator('#auto-switch').check();await page.waitForFunction(()=>document.querySelector('#auto-switch-status').textContent.includes('已开启'));
   assert.equal((await(await page.request.get(base+'/api/quota-watch')).json()).enabled,true);
+  await page.locator('#auto-continue').check();await page.waitForFunction(()=>!document.querySelector('#auto-continue').disabled);
+  assert.equal((await(await page.request.get(base+'/api/quota-watch')).json()).continue_tasks,true);
   await page.reload({waitUntil:'networkidle'});assert.equal(await page.locator('#auto-switch').isChecked(),true);
+  assert.equal(await page.locator('#auto-continue').isChecked(),true);
   await page.locator('#auto-switch').uncheck();await page.waitForFunction(()=>document.querySelector('#auto-switch-status').textContent==='已关闭');
+  assert.equal(await page.locator('#auto-continue').isDisabled(),true);
+  assert.equal((await(await page.request.get(base+'/api/quota-watch')).json()).continue_tasks,true);
   await page.route('**/api/quota-watch',r=>r.request().method()==='PATCH'?r.fulfill({status:503,json:{error:'测试保存失败'}}):r.continue());
   await page.locator('#auto-switch').check();await page.waitForFunction(()=>!document.querySelector('#auto-switch').disabled&&!document.querySelector('#auto-switch').checked);
   await page.unroute('**/api/quota-watch');
+  await page.locator('#auto-switch').check();await page.waitForFunction(()=>!document.querySelector('#auto-continue').disabled);
+  await page.route('**/api/quota-watch',r=>r.request().method()==='PATCH'?r.fulfill({status:503,json:{error:'测试续跑设置失败'}}):r.continue());
+  await page.locator('#auto-continue').uncheck();
+  await page.waitForFunction(()=>!document.querySelector('#auto-continue').disabled&&document.querySelector('#auto-continue').checked);
+  assert.equal((await(await page.request.get(base+'/api/quota-watch')).json()).continue_tasks,true);
+  await page.unroute('**/api/quota-watch');
+  await page.locator('#auto-continue').uncheck();await page.waitForFunction(()=>!document.querySelector('#auto-continue').disabled);
+  assert.equal((await(await page.request.get(base+'/api/quota-watch')).json()).enabled,true);
+  await page.locator('#auto-switch').uncheck();await page.waitForFunction(()=>document.querySelector('#auto-switch-status').textContent==='已关闭');
   const source=page.locator(`[data-id="${first.id}"]`),custom=page.locator('.custom-card');
   assert.ok(await custom.locator('.advance-button').isHidden());
   await source.locator('.advance-button').click();
@@ -53,7 +69,7 @@ const root=path.resolve(__dirname,'../..'),python=process.env.OKEEPER_PYTHON||'p
   for(const width of [1280,768,390,320]){await page.setViewportSize({width,height:1000});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),String(width));}
   await page.setViewportSize({width:390,height:844});await page.screenshot({path:path.join(artifacts,'quota-watch-mobile.png'),fullPage:true});
   assert.deepEqual(errors,[]);
-  const proof={at:new Date().toISOString(),isolated_settings:true,default_off:true,toggle_persists_reload:true,failed_save_reverts_switch:true,custom_card_has_no_advance:true,advance_preserves_account_and_mode:true,advance_does_not_open_editor:true,duplicate_rejected:true,chained_advance_and_undo:true,once_midnight_absolute_date:true,custom_server_rejected:true,overrides_and_csrf_rejected:true,no_overflow_all_sizes:true,page_errors:errors};
+  const proof={at:new Date().toISOString(),isolated_settings:true,default_off:true,toggle_persists_reload:true,continue_default_off:true,continue_persists_reload:true,continue_requires_auto_switch:true,failed_save_reverts_both_switches:true,failed_save_reverts_switch:true,custom_card_has_no_advance:true,advance_preserves_account_and_mode:true,advance_does_not_open_editor:true,duplicate_rejected:true,chained_advance_and_undo:true,once_midnight_absolute_date:true,custom_server_rejected:true,overrides_and_csrf_rejected:true,no_overflow_all_sizes:true,page_errors:errors};
   fs.writeFileSync(path.join(artifacts,'quota-watch-ui-result.json'),JSON.stringify(proof,null,2)+'\n');console.log(JSON.stringify(proof,null,2));
  }finally{if(browser)await browser.close();if(server&&server.exitCode===null){server.kill();await new Promise(resolve=>server.once('exit',resolve));}fs.rmSync(state,{recursive:true,force:true});}
 })().catch(error=>{console.error(error);process.exitCode=1;});

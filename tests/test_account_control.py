@@ -77,18 +77,49 @@ class AccountControlTests(unittest.TestCase):
         control.perform(job['id'],self.state,self.home,runner,self.verifier)
         value=control.load(self.state)
         self.assertEqual(value['diagnostic'],{'step':'stop','code':'unmanaged_runtime','exit_code':1})
-        self.assertIn('进程登记不一致',value['message'])
+        self.assertIn('未由原生 daemon 托管',value['message'])
         self.assertEqual(read_auth(self.home/'auth.json')['auth'],self.a)
 
     def test_known_unmanaged_error_is_classified(self):
         self.assertEqual(control.classify_daemon_error('Error: app server is running but is not managed by codex app-server daemon'),'unmanaged_runtime')
         self.assertEqual(control.classify_daemon_error('arbitrary upstream secret'),'daemon_command_failed')
 
+    def test_old_unmanaged_error_explained_without_rewriting_receipt(self):
+        control.save({'status':'failed','message':'主后台安装入口与进程登记不一致，登录文件未修改','diagnostic':{'code':'unmanaged_runtime'}},self.state)
+        before=(self.state/'account-control.json').read_bytes()
+        with patch.object(control,'inspect_runtime',return_value={'running':True}):view=control.public_state(self.state,self.home)
+        self.assertIn('未由原生 daemon 托管',view['operation']['message'])
+        self.assertEqual((self.state/'account-control.json').read_bytes(),before)
+
+    def test_only_unmanaged_stop_uses_verified_process_fallback(self):
+        result=Mock(returncode=1,stderr='app server is running but is not managed by codex app-server daemon')
+        with patch.object(control.subprocess,'run',return_value=result),patch('owned_runtime.stop') as stop:
+            control.daemon('stop',self.home)
+            stop.assert_called_once_with(self.home,control.BIN)
+            with self.assertRaises(control.DaemonCommandError):control.daemon('start',self.home)
+            self.assertEqual(stop.call_count,1)
+
+    def test_unverified_process_never_changes_login_or_activates_target(self):
+        import owned_runtime
+        job=self.queue()
+        result=Mock(returncode=1,stderr='app server is running but is not managed by codex app-server daemon')
+        with patch.object(control.subprocess,'run',return_value=result),patch.object(owned_runtime,'stop',side_effect=owned_runtime.StopError('unverified_runtime')):
+            control.perform(job['id'],self.state,self.home,verifier=self.verifier)
+        self.assertEqual(read_auth(self.home/'auth.json')['auth'],self.a)
+        self.assertEqual(control.load(self.state)['diagnostic']['code'],'unverified_runtime')
+
     def test_restart_keeps_account_and_saves_a_fresh_native_profile(self):
         job=self.queue('restart');calls=[]
         control.perform(job['id'],self.state,self.home,lambda a,h:calls.append(a),self.verifier)
         self.assertEqual(calls,['stop','start']);self.assertEqual(read_auth(self.home/'auth.json')['auth'],self.a)
         self.assertEqual(control.load(self.state)['status'],'completed')
+
+    def test_scheduled_guard_can_cancel_before_stop_without_changing_login(self):
+        job=self.queue();runner=Mock()
+        control.perform(job['id'],self.state,self.home,runner,self.verifier,before_stop=lambda:False)
+        runner.assert_not_called()
+        self.assertEqual(control.load(self.state)['status'],'cancelled')
+        self.assertEqual(read_auth(self.home/'auth.json')['auth'],self.a)
 
     def test_repeated_post_and_worker_execution_do_not_restart_twice(self):
         payload=self.request();launched=[]

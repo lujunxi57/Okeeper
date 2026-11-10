@@ -3,7 +3,7 @@
 Native profile switching: stop -> fresh backup -> native profile -> start.
 Never accepts a path, shell command, token, or model from the browser.
 """
-from contextlib import contextmanager
+from contextlib import contextmanager,nullcontext
 import datetime as dt
 import fcntl
 import hashlib
@@ -15,13 +15,14 @@ from settings import worker_environment
 import sys
 import time
 import uuid
+import account_continue
 
 from account_quota import atomic_json,identity
 from auth_profiles import HOME,canonical,profiles,read_auth,refreshed_native
 from rpc import BIN,RPC
 
 from settings import STATE
-ACTIVE={'queued','stopping','backing_up','activating','starting','verifying','rolling_back'}
+ACTIVE={'queued','capturing','stopping','backing_up','activating','starting','verifying','continuing','rolling_back'}
 
 
 class DaemonCommandError(RuntimeError):
@@ -86,6 +87,10 @@ def inspect_runtime(home=None,include_tasks=False):
 
 def public_state(state=None,home=None):
     state=Path(state or STATE);home=Path(home or HOME);value=load(state)
+    if (value and value.get('status')=='failed' and
+        (value.get('diagnostic') or {}).get('code')=='unmanaged_runtime'):
+        # Explain historical failures accurately without rewriting receipts.
+        value={**value,'message':'主后台未由原生 daemon 托管，本次未能停止，登录文件未修改'}
     # A worker killed or a launch lost must not leave a permanent "working" UI.
     if value and value.get('status') in ACTIVE and not recent_busy(value):
         value={**value,'status':'failed','message':'操作未确认完成，请检查后台状态后重试'}
@@ -93,7 +98,9 @@ def public_state(state=None,home=None):
         if recent_busy(value):raise ConnectionError('Busy')
         runtime=inspect_runtime(home,include_tasks=True)
     except Exception:runtime={'running':False,'email':None,'workspace':None,'active_tasks':None}
-    saved=profiles(home)
+    from account_preferences import disabled_ids
+    disabled=disabled_ids(state)
+    saved={id:a for id,a in profiles(home).items() if id not in disabled}
     return {'operation':value,'busy':recent_busy(value),'runtime':runtime,
             'accounts':[{'id':a['id'],'name':a['name'],'switchable':True} for a in saved.values()]}
 
@@ -106,7 +113,7 @@ def launch(job):
                    stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
 
 
-def request_operation(payload,state=None,home=None,launcher=None,*,automatic=None):
+def request_operation(payload,state=None,home=None,launcher=None,*,automatic=None,already_locked=False):
     state=Path(state or STATE);home=Path(home or HOME)
     allowed={'action','account_id','confirmed','request_id'}
     if not isinstance(payload,dict) or set(payload)-allowed or payload.get('confirmed') is not True:
@@ -114,6 +121,8 @@ def request_operation(payload,state=None,home=None,launcher=None,*,automatic=Non
     action=payload.get('action');account_id=payload.get('account_id','');request_id=payload.get('request_id')
     if action not in ('switch','restart') or not isinstance(account_id,str) or (action=='restart' and account_id):
         raise ValueError('操作无效')
+    from account_preferences import enabled
+    if account_id and not enabled(account_id,state):raise ValueError('此账号已停用，请先在账号管理中启用')
     try:request_id=str(uuid.UUID(request_id))
     except (ValueError,TypeError,AttributeError):raise ValueError('操作标识无效') from None
     if action=='switch' and account_id not in profiles(home):raise ValueError('此账号没有可用的原生登录副本，请先重新登录')
@@ -121,7 +130,7 @@ def request_operation(payload,state=None,home=None,launcher=None,*,automatic=Non
     if recent_busy(old):
         if old.get('request_id')==request_id:return old
         raise BlockingIOError('已有切换或重启正在进行')
-    with locked(state):
+    with (nullcontext() if already_locked else locked(state)):
         old=load(state)
         if old and old.get('request_id')==request_id:return old
         if recent_busy(old):raise BlockingIOError('已有切换或重启正在进行')
@@ -150,8 +159,15 @@ def daemon(action,home=None):
                               check=False,timeout=35,capture_output=True,text=True)
     except subprocess.TimeoutExpired:raise DaemonCommandError(action,None,'daemon_timeout') from None
     if result.returncode:
+        category=classify_daemon_error(result.stderr)
+        if action=='stop' and category=='unmanaged_runtime':
+            import owned_runtime
+            try:owned_runtime.stop(Path(home or HOME),BIN)
+            except owned_runtime.StopError as error:
+                raise DaemonCommandError(action,result.returncode,error.category) from None
+            return
         # Store only an allowlisted diagnosis, never raw CLI output or tokens.
-        raise DaemonCommandError(action,result.returncode,classify_daemon_error(result.stderr))
+        raise DaemonCommandError(action,result.returncode,category)
 
 
 def verify(home,expected):
@@ -166,9 +182,9 @@ def verify(home,expected):
         time.sleep(.4)
 
 
-def perform(job,state=None,home=None,runner=None,verifier=None):
+def perform(job,state=None,home=None,runner=None,verifier=None,*,already_locked=False,before_stop=None):
     state=Path(state or STATE);home=Path(home or HOME);runner=runner or daemon;verifier=verifier or verify
-    with locked(state):
+    with (nullcontext() if already_locked else locked(state)):
         record=load(state)
         if not record or record['id']!=job or record['status']!='queued':return
         def progress(status,message):
@@ -185,10 +201,36 @@ def perform(job,state=None,home=None,runner=None,verifier=None):
                     return
             target=None
             if record['action']=='switch':
+                from account_preferences import enabled
+                if not enabled(record['account_id'],state):
+                    progress('cancelled','目标账号已停用，本次未切换');return
                 account=profiles(home).get(record['account_id'])
                 if not account:raise ValueError('Missing native profile')
                 target=read_auth(account['path'])
                 if target['id']!=record['account_id']:raise ValueError('Native profile changed')
+            if record.get('automatic'):
+                from quota_watch import config
+                setting=config(state)
+                if setting['continue_tasks']:
+                    progress('capturing','正在记录本次切换影响的任务')
+                    try:
+                        source=profiles(home).get(record['automatic']['current'])
+                        if source is None:
+                            source=read_auth(home/'auth.json')
+                            if source['id']!=record['automatic']['current']:raise ValueError('Unknown source account')
+                        record['continuation']=account_continue.capture(state,home,source['key'])
+                    except Exception:
+                        record['continuation']={'status':'capture_failed','candidates':[],'incomplete':True}
+                # Snapshot reads can take time; revoke or recheck switching
+                # conditions again before interrupting the source backend.
+                if not authorized(record,state,home):
+                    progress('cancelled','自动切换条件已变化，本次未重启')
+                    return
+            if before_stop is not None:
+                # Scheduled account selection may restart only an idle runtime,
+                # and only while its original task remains authorized.
+                if not before_stop():
+                    progress('cancelled','定向任务或后台状态已变化，本次未切换');return
             progress('stopping','正在停止主后台')
             runner('stop',home);stopped=True
             # Capture only AFTER stop: includes the daemon's latest token refresh.
@@ -229,11 +271,28 @@ def perform(job,state=None,home=None,runner=None,verifier=None):
                     progress('failed','操作未完成，已恢复原账号；目标凭据可能需要重新登录')
                 except Exception:progress('failed','操作未完成，恢复也未确认成功，请通过 SSH 检查后台')
             else:
-                messages={'unmanaged_runtime':'主后台安装入口与进程登记不一致，登录文件未修改',
+                messages={'unmanaged_runtime':'主后台未由原生 daemon 托管，登录文件未修改',
+                          'unverified_runtime':'主后台未托管，且无法核实可安全停止的进程，登录文件未修改',
+                          'runtime_replaced':'停止后主后台已被其他客户端重新启动，登录文件未修改',
                           'missing_package':'Codex 后台安装入口不可用，登录文件未修改',
                           'permission_denied':'停止主后台的权限不足，登录文件未修改',
                           'daemon_timeout':'停止主后台超时，登录文件未修改'}
                 progress('failed',messages.get(getattr(error,'category',None),'未能停止主后台，登录文件未修改'))
+        # Continuation failure must never roll back an already verified switch.
+        if record.get('status')=='completed' and record.get('continuation'):
+            plan=record['continuation']
+            progress('continuing','账号已切换，正在恢复受影响任务')
+            try:
+                record['continuation']=account_continue.resume(state,home,expected,
+                    record['automatic']['generation'],plan,record['id'])
+                result=record['continuation']
+                message=f"账号已切换；已提交续跑 {result['accepted']} 个，跳过 {result['skipped']} 个"
+                if result['unconfirmed']:message+=f"，未确认 {result['unconfirmed']} 个"
+                if result['incomplete']:message+='；部分任务未能核查'
+            except Exception:
+                record['continuation']={'status':'failed','message':'续跑未确认，不会自动重发'}
+                message='账号已切换；任务续跑未确认，请查看原会话'
+            progress('completed',message)
 
 
 if __name__=='__main__' and len(sys.argv)==3 and sys.argv[1]=='run':perform(sys.argv[2])

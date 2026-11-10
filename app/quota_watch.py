@@ -14,9 +14,10 @@ from auth_profiles import HOME, profiles, read_auth
 def config(state):
     try:
         value=json.loads((Path(state)/'quota-watch-config.json').read_text())
-        if type(value.get('enabled')) is bool and isinstance(value.get('generation'),str):return value
+        if type(value.get('enabled')) is bool and isinstance(value.get('generation'),str):
+            return {'enabled':value['enabled'],'continue_tasks':value.get('continue_tasks') is True,'generation':value['generation']}
     except (OSError,ValueError,TypeError):pass
-    return {'enabled':False,'generation':'0'}
+    return {'enabled':False,'continue_tasks':False,'generation':'0'}
 
 
 def public_state(state):
@@ -28,14 +29,16 @@ def public_state(state):
 
 
 def configure(state,payload):
-    if not isinstance(payload,dict) or set(payload)!={'enabled'} or type(payload['enabled']) is not bool:
+    if not isinstance(payload,dict) or not payload or set(payload)-{'enabled','continue_tasks'} or any(type(v) is not bool for v in payload.values()):
         raise ValueError('自动切换设置无效')
     state=Path(state);state.mkdir(parents=True,exist_ok=True)
     with (state/'quota-watch-config.lock').open('a') as lock:
         fcntl.flock(lock,fcntl.LOCK_EX)
         old=config(state)
-        if old['enabled']!=payload['enabled']:
-            atomic_json(state/'quota-watch-config.json',{'enabled':payload['enabled'],'generation':uuid.uuid4().hex})
+        updated={**old,**payload}
+        if updated!=old:
+            updated['generation']=uuid.uuid4().hex
+            atomic_json(state/'quota-watch-config.json',updated)
     return public_state(state)
 
 
@@ -111,12 +114,14 @@ def tick(state=None,home=None,quota_reader=None,runtime_reader=None,launcher=Non
             runtime=(runtime_reader or control.inspect_runtime)(home)
             current_id=runtime_account(home,runtime)
             if not current_id:return result('unavailable','暂时无法确认主后台账号')
+            from account_preferences import enabled
+            if not enabled(current_id,state):return result('disabled','当前账号已停用，自动切换已暂停')
             values={a['id']:a for a in (quota_reader or (lambda:cache.get(force=True)))()['accounts']}
             current=values.get(current_id,{})
             if not fresh(current,now):return result('unavailable','额度暂时无法更新，保留当前账号')
             if not exhausted(current,now):return result('watching','监测中')
             reset=five_hour(current)['resets_at'];saved=profiles(home)
-            candidates=sorted((a for a in values.values() if a['id']!=current_id and a['id'] in saved and usable(a,now)),
+            candidates=sorted((a for a in values.values() if a['id']!=current_id and a['id'] in saved and enabled(a['id'],state) and usable(a,now)),
                               key=lambda a:(-five_hour(a)['remaining_percent'],a['id']))
             for candidate in candidates:
                 rid=request_id(setting['generation'],current_id,reset,candidate['id'])

@@ -6,13 +6,20 @@ import json
 import os
 import re
 import sqlite3
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit,parse_qs
 from schedule_store import create_alarm, delete_alarm, snapshot, update_alarm, connect, database, delivery_fields, account_fields, custom_model_fields, ALARM_FIELDS, advance_alarm
 from session_catalog import list_sessions, list_models, validate_target
 from account_quota import cache as quota_cache
 from account_rpc import account_catalog,find_account
 import account_control
 import quota_watch
+import account_store
+import account_dispatch
+from request_history import recent_requests
+import account_management
+import account_preferences
+import workspace_sessions
+from auth_profiles import profiles
 
 from settings import ROOT
 from settings import STATE
@@ -34,6 +41,21 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
     def do_GET(self):
         path = urlsplit(self.path).path
+        if path == '/api/account-management':
+            try:self.reply(200,{'accounts':account_management.accounts(STATE),'login':account_management.login.status()})
+            except Exception:self.reply(503,{'error':'暂时无法读取账号管理，请稍后重试'})
+            return
+        if path == '/api/account-login':
+            self.reply(200,account_management.login.status());return
+        if path == '/api/workspaces':
+            try:self.reply(200,workspace_sessions.browse(parse_qs(urlsplit(self.path).query).get('path',[None])[0]))
+            except ValueError as error:self.reply(400,{'error':str(error)})
+            except Exception:self.reply(503,{'error':'暂时无法读取工作文件夹'})
+            return
+        if path == '/api/requests':
+            try:self.reply(200,recent_requests(STATE))
+            except Exception:self.reply(503,{'error':'暂时无法读取请求记录，请稍后重试'})
+            return
         if path == '/api/quota':
             self.reply(200, quota_cache.get(force=urlsplit(self.path).query == 'refresh=1'))
             return
@@ -88,11 +110,36 @@ class Handler(BaseHTTPRequestHandler):
             payload = json.loads(self.rfile.read(length) or b'{}')
             if not isinstance(payload,dict):raise ValueError('请求格式无效')
             path = urlsplit(self.path).path
+            if path=='/api/account-login' and self.command in ('POST','DELETE'):
+                if payload:raise ValueError('登录请求无效')
+                self.reply(202 if self.command=='POST' else 200,
+                    account_management.login.start() if self.command=='POST' else account_management.login.cancel())
+                return
+            preference=re.fullmatch(r'/api/account-management/([a-f0-9]{20})',path)
+            if self.command=='PATCH' and preference:
+                if preference.group(1) not in {a['id'] for a in account_management.accounts(STATE)}:raise LookupError('账号已不存在，请刷新')
+                account_preferences.configure(preference.group(1),payload,STATE)
+                self.reply(200,{'accounts':account_management.accounts(STATE)});return
+            if self.command=='POST' and path=='/api/sessions':
+                self.reply(201,{'session':workspace_sessions.create(STATE,payload)});return
             if self.command=='PATCH' and path=='/api/quota-watch':
                 self.reply(200,quota_watch.configure(STATE,payload))
                 return
             if self.command=='POST' and path=='/api/account-control':
                 self.reply(202,account_control.request_operation(payload,STATE))
+                return
+            manual=re.fullmatch(r'/api/accounts/([a-f0-9]{20})/trigger',path)
+            if self.command=='POST' and manual:
+                if set(payload)!={'request_id'}:raise ValueError('发送请求无效')
+                record=find_account(manual.group(1))
+                if not record:raise ValueError('此账号已不存在，请刷新后重试')
+                slot,created=account_store.reserve_manual(STATE,record,payload['request_id'])
+                if created:
+                    try:account_dispatch.launch(slot)
+                    except Exception:
+                        run=account_store.begin(STATE,slot)
+                        if run:account_store.finish(STATE,run,'failed_or_uncertain',error='无法启动账号触发进程；请重新点击发送')
+                self.reply(202,snapshot(STATE))
                 return
             advance=re.fullmatch(r'/api/alarms/([a-f0-9-]{36})/advance',path)
             if self.command=='POST' and advance:
@@ -124,8 +171,12 @@ class Handler(BaseHTTPRequestHandler):
                 if account and (self.command=='POST' or set(payload)&{'account_id','target_type'}):
                     record=find_account(account)
                     if not record:raise ValueError('此账号已不存在，请重新选择')
+                    if target=='thread':
+                        if account not in profiles():raise ValueError('此账号没有可用的登录副本，请在账号管理重新授权')
                     account_name=record['label']
-                if target=='thread' and (self.command=='POST' or set(payload)&{'target_type','thread_id','prompt'}):
+                from schedule_store import new_session_fields
+                pending=new_session_fields(payload,old)
+                if target=='thread' and not pending and (self.command=='POST' or set(payload)&{'target_type','thread_id','prompt','new_session'}):
                     try:_,meta=validate_target(STATE,thread)
                     except ValueError:raise
                     except Exception as error:raise ValueError('会话不存在或暂时无法访问，请重新选择') from error

@@ -12,7 +12,9 @@ from rpc import BIN, RPC
 
 def account_catalog():
     records, _ = discover_accounts()
-    return [{'id': r['id'], 'name': r['label'], 'current': r['current']} for r in records]
+    from auth_profiles import profiles
+    saved=profiles()
+    return [{'id': r['id'], 'name': r['label'], 'current': r['current'],'switchable':r['id'] in saved} for r in records]
 
 
 def find_account(account_id):

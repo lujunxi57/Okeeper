@@ -91,15 +91,97 @@ class CustomTests(unittest.TestCase):
         start=next(p for m,p in rpc.calls if m=='turn/start')
         self.assertEqual((start.get('model'),start.get('effort')),('gpt-6-luna','max'))
         row=self.run_row(slot);self.assertEqual((row['model'],row['effort']),('gpt-6-luna','max'))
-    def test_missing_model_settings_fails_without_fallback(self):
+    def test_native_null_effort_inherits_default_without_forcing_a_value(self):
         id=self.create();slot=self.reserve(id);rpc=FakeRPC(self,effort=None)
         with patch.object(w,'RPC',lambda:rpc):w.execute(slot)
-        self.assertEqual(self.run_row(slot)['status'],'failed_or_uncertain');self.assertFalse(any(m=='turn/start' for m,p in rpc.calls))
+        self.assertEqual(self.run_row(slot)['status'],'completed')
+        start=next(p for m,p in rpc.calls if m=='turn/start')
+        self.assertNotIn('effort',start);self.assertNotIn('model',start)
+        self.assertIsNone(self.run_row(slot)['effort'])
+    def test_explicit_model_and_effort_work_on_empty_chat_with_null_effort(self):
+        id=self.create(custom_model='gpt-5.6-luna',custom_effort='low');slot=self.reserve(id);rpc=FakeRPC(self,effort=None)
+        with patch.object(w,'RPC',lambda:rpc):w.execute(slot)
+        self.assertEqual(self.run_row(slot)['status'],'completed')
+        start=next(p for m,p in rpc.calls if m=='turn/start')
+        self.assertEqual((start['model'],start['effort']),('gpt-5.6-luna','low'))
+    def test_forced_model_without_effort_preserves_native_default(self):
+        id=self.create(custom_model='gpt-5.6-luna');slot=self.reserve(id);rpc=FakeRPC(self,effort=None)
+        with patch.object(w,'RPC',lambda:rpc):w.execute(slot)
+        self.assertEqual(self.run_row(slot)['status'],'completed')
+        start=next(p for m,p in rpc.calls if m=='turn/start')
+        self.assertEqual(start['model'],'gpt-5.6-luna');self.assertNotIn('effort',start)
+    def test_missing_inherited_settings_skipped_before_submission(self):
+        for field in ('reasoningEffort','model'):
+            with self.subTest(field=field):
+                id=self.create();slot=self.reserve(id);rpc=FakeRPC(self)
+                original=rpc.call
+                def call(method,params):
+                    result=original(method,params)
+                    if method=='thread/resume':result.pop(field)
+                    return result
+                rpc.call=call
+                with patch.object(w,'RPC',lambda:rpc):w.execute(slot)
+                self.assertEqual(self.run_row(slot)['status'],'skipped_settings')
+                self.assertFalse(any(m=='turn/start' for m,p in rpc.calls))
+                s.delete_alarm(self.state,id);self.clock+=dt.timedelta(days=1)
     def test_long_turn_has_no_old_three_minute_timeout(self):
         id=self.create();slot=self.reserve(id);rpc=FakeRPC(self,long=True)
         with patch.object(w,'RPC',lambda:rpc):w.execute(slot)
         self.assertEqual(self.run_row(slot)['status'],'completed');self.assertGreaterEqual((self.clock-dt.datetime(2026,10,16,7,0,1,tzinfo=s.TZ)).total_seconds(),600)
         self.assertFalse(any(m=='turn/interrupt' for m,p in rpc.calls))
+
+    def pending(self,**changes):
+        payload={'new_session':{'cwd':str(self.state),'name':'每日实验'}};payload.update(changes)
+        with patch('workspace_sessions.roots',return_value=[self.state]):return self.create(**payload)
+
+    def test_deferred_config_persists_without_creating_and_survives_edits(self):
+        with patch('workspace_sessions.RPC',side_effect=AssertionError('must not connect')):
+            id=self.pending();s.update_alarm(self.state,id,{'prompt':'changed','enabled':False})
+            s.connect(self.state).close()
+        cfg=self.alarm(id)
+        self.assertEqual(cfg['new_session'],{'cwd':str(self.state),'name':'每日实验'})
+        self.assertEqual(cfg['thread_name'],'每日实验')
+        self.assertFalse(cfg['enabled'])
+
+    def test_deferred_create_and_first_send_share_connection_and_never_repeat(self):
+        id=self.pending();slot=self.reserve(id);rpc=FakeRPC(self,effort=None);original=rpc.call
+        def call(method,params):
+            if method=='thread/start':
+                rpc.calls.append((method,params));return {'thread':rpc.thread(),'model':'gpt-6.1-sol','reasoningEffort':None}
+            if method=='thread/name/set':rpc.calls.append((method,params));return {}
+            return original(method,params)
+        rpc.call=call
+        with patch.object(w,'RPC',lambda:rpc),patch('workspace_sessions.roots',return_value=[self.state]):w.execute(slot);w.execute(slot)
+        self.assertEqual(self.run_row(slot)['status'],'completed')
+        self.assertEqual(self.run_row(slot)['thread_id'],A)
+        methods=[m for m,p in rpc.calls]
+        self.assertEqual(methods.count('thread/start'),1);self.assertEqual(methods.count('turn/start'),1)
+        self.assertLess(methods.index('thread/start'),methods.index('turn/start'))
+        self.assertLess(methods.index('turn/start'),methods.index('thread/name/set'))
+        self.assertNotIn('thread/resume',methods)
+        self.assertEqual(next(p for m,p in rpc.calls if m=='thread/start'),{'cwd':str(self.state),'ephemeral':False})
+        self.assertIsNone(self.run_row(slot)['effort'])
+
+    def test_uncertain_creation_never_retries_or_sends(self):
+        id=self.pending();slot=self.reserve(id);rpc=FakeRPC(self);original=rpc.call
+        def call(method,params):
+            if method=='thread/start':rpc.calls.append((method,params));raise ConnectionError('lost creation response')
+            return original(method,params)
+        rpc.call=call
+        with patch.object(w,'RPC',lambda:rpc),patch('workspace_sessions.roots',return_value=[self.state]):w.execute(slot);w.execute(slot)
+        self.assertEqual(self.run_row(slot)['status'],'failed_or_uncertain')
+        self.assertEqual([m for m,p in rpc.calls].count('thread/start'),1)
+        self.assertFalse(rpc.sent)
+
+    def test_changed_or_late_deferred_task_never_creates(self):
+        id=self.pending();slot=self.reserve(id);self.clock+=dt.timedelta(seconds=20)
+        with patch.object(w,'RPC',side_effect=AssertionError('must not connect')):w.execute(slot)
+        self.assertEqual(self.run_row(slot)['status'],'skipped_missed')
+
+    def test_switch_to_existing_clears_deferred_configuration(self):
+        id=self.pending()
+        s.update_alarm(self.state,id,{'thread_id':B,'new_session':None})
+        self.assertIsNone(self.alarm(id)['new_session']);self.assertEqual(self.alarm(id)['thread_id'],B)
     def test_managed_daily_session_rejected_even_after_rename(self):
         with s.database(self.state) as db:
             db.execute('CREATE TABLE daily_chats(day TEXT PRIMARY KEY,thread_id TEXT,created_at TEXT)');db.execute('INSERT INTO daily_chats VALUES(?,?,?)',('2026-10-16',A,''))

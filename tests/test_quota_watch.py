@@ -140,3 +140,33 @@ class QuotaWatchTests(unittest.TestCase):
     def test_reader_failure_keeps_account(self):
         self.read.side_effect=ConnectionError();self.tick();self.run.assert_not_called()
         self.assertEqual(watch.public_state(self.state)['status'],'unavailable')
+
+    def perform_with_continue(self,runner=None,**changes):
+        watch.configure(self.state,{'continue_tasks':True})
+        self.tick();job=control.load(self.state)
+        def verify(home,key):return {'email':key[2]}
+        runner=runner or Mock()
+        with patch.object(control,'inspect_runtime',return_value=self.runtime),patch.object(watch.cache,'get',return_value=self.values), \
+             patch.object(control,'refreshed_native',side_effect=lambda a:a), \
+             patch.object(control.account_continue,'capture',return_value={'candidates':[{'thread_id':'chat','source_turn_id':'turn','reason':'quota_failed'}]}) as capture, \
+             patch.object(control.account_continue,'resume',**changes) as resume:
+            control.perform(job['id'],self.state,self.home,runner,verify)
+        return capture,resume,control.load(self.state),runner
+
+    def test_continue_runs_after_verified_switch_and_preserves_automatic_receipt(self):
+        capture,resume,job,runner=self.perform_with_continue(return_value={'accepted':1,'skipped':0,'unconfirmed':0,'incomplete':False})
+        capture.assert_called_once();resume.assert_called_once()
+        self.assertEqual(read_auth(self.home/'auth.json')['id'],self.bid)
+        self.assertEqual(job['status'],'completed');self.assertIn('已提交续跑 1',job['message'])
+        self.assertEqual(resume.call_args.args[2],identity(self.b)[0])
+        self.assertEqual(runner.call_count,2)
+
+    def test_continue_failure_does_not_roll_back_successful_switch(self):
+        _,resume,job,runner=self.perform_with_continue(side_effect=RuntimeError('private upstream error'))
+        resume.assert_called_once();self.assertEqual(runner.call_count,2)
+        self.assertEqual(job['status'],'completed');self.assertEqual(read_auth(self.home/'auth.json')['id'],self.bid)
+        self.assertIn('续跑未确认',job['message']);self.assertNotIn('private',json.dumps(job))
+
+    def test_switch_failure_never_sends_continue(self):
+        _,resume,job,_=self.perform_with_continue(runner=Mock(side_effect=RuntimeError('stop failed')))
+        resume.assert_not_called();self.assertEqual(job['status'],'failed')
